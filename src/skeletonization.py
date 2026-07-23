@@ -1,37 +1,41 @@
+"""Skeletonization routines for three-dimensional binary masks."""
+
+from pathlib import Path
+
 import numpy as np
-import os
 from skimage.morphology import skeletonize
 
-def skeletonize_mask(file_path, output_path):
-    """
-    Creates a skeleton from a 3D segmentation mask.
-    
+def skeletonize_mask(file_path: str | Path, output_path: str | Path) -> np.ndarray:
+    """Create and save a 3D boolean skeleton from a nonzero-valued ``.npy`` mask.
+
+    This routine deliberately does not print progress messages: it is called by
+    the stdio MCP server, whose standard output is reserved for JSON-RPC.
+
     Args:
-        file_path (str): Path to the .npy file containing the 3D mask.
-        output_path (str): Path to save the extracted skeleton (.npy).
+        file_path: Existing NumPy file containing a three-dimensional mask.
+        output_path: Destination NumPy path for the boolean skeleton.
+
+    Returns:
+        The saved boolean skeleton array.
+
+    Raises:
+        FileNotFoundError: If ``file_path`` does not exist.
+        ValueError: If the input array is not three-dimensional.
     """
-    if not os.path.exists(file_path):
-        print(f"Error: File not found at {file_path}")
-        return
+    input_path = Path(file_path).expanduser()
+    destination_path = Path(output_path).expanduser()
+    if not input_path.is_file():
+        raise FileNotFoundError(f"mask input file not found: {input_path}")
 
-    print(f"Loading mask from {file_path}...")
-    mask = np.load(file_path)
-    print(f"Original mask shape: {mask.shape}")
-    
-    # Ensure the mask is boolean
-    if mask.dtype != bool:
-        print("Converting mask to boolean array...")
-        # Assuming background is 0 and object is > 0
-        mask = mask > 0
+    mask = np.load(input_path, allow_pickle=False)
+    if mask.ndim != 3:
+        raise ValueError(
+            f"expected a 3D mask in {input_path}, found {mask.ndim} dimensions"
+        )
 
-    print("Extracting skeleton (this may take a moment for 3D data)...")
-    skeleton = skeletonize(mask)
-    
-    print(f"Skeleton extracted. Non-zero voxels: {np.count_nonzero(skeleton)}")
-    
-    np.save(output_path, skeleton)
-    print(f"Saved skeleton to: {output_path}")
-    
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    skeleton = skeletonize(mask.astype(bool, copy=False))
+    np.save(destination_path, skeleton, allow_pickle=False)
     return skeleton
 
 if __name__ == "__main__":
@@ -40,8 +44,6 @@ if __name__ == "__main__":
     output_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "octet_truss_unit_cell_skeleton.npy"))
     
     # Create the data directory if it doesn't exist
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
     skeletonize_mask(
         file_path=file_path, 
         output_path=output_path

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Threshold Optimizer"
+  short_description: "Compare CT segmentation thresholds"
+  default_prompt: "Use $threshold-optimizer to compare segmentation thresholds for this CT volume."

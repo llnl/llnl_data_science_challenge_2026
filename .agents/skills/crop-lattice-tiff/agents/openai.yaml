@@ -1,0 +1,4 @@
+interface:
+  display_name: "Crop Lattice TIFF"
+  short_description: "Crop CT TIFF borders to the thresholded lattice bounds."
+  default_prompt: "Use $crop-lattice-tiff to crop a CT lattice TIFF to its thresholded foreground bounds."
