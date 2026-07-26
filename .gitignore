@@ -172,3 +172,6 @@ ehthumbs.db
 Thumbs.db
 
 result
+
+# Generated analysis outputs (large volumes, TIFFs, PNGs)
+outputs/
