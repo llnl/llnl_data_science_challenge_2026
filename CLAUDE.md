@@ -24,16 +24,84 @@ for the full challenge description.
       nominal missing struts, 3 replicates each). Goal: detect missing
       junctions/struts directly from the `.tif` files.
 
-  Current approach (see `src/strut_cylinder_segmentation.py`): segment the
-  volume once at the full-volume Otsu threshold, then sweep a cylinder along
-  each nominal strut and count segmented voxels inside it. The per-strut
-  statistic is `area = n_segmented / sampled_length`, a cross-section in
-  voxels², compared against the nominal design cross-section (12.3 vox²).
+**Current focus is missing junctions, not missing struts.** The strut detector
+works and its findings are recorded below, but validating it is parked.
 
-  Note the raw/nominal design JSONs and STLs are NOT aligned with the TIFF
-  coordinate system; only the `registered_jsons/` variants line up with their
-  corresponding scan (see `data/missing_struts/file_names.txt` and
-  `data/9x9x9_octet_lattice/note.txt` for which TIFF/JSON pairs correspond).
+Note the raw/nominal design JSONs and STLs are NOT aligned with the TIFF
+coordinate system; only the `registered_jsons/` variants line up with their
+corresponding scan (see `data/missing_struts/file_names.txt` and
+`data/9x9x9_octet_lattice/note.txt` for which TIFF/JSON pairs correspond).
+Only 1 of the 9 scans named in `file_names.txt` is present locally
+(`0point5dash1`, byte-identical to `data/9x9x9_octet_lattice/9x9x9_octet_lattice.tif`),
+and `registered_jsons/` holds only its companion — so **no 0% control specimen
+is available** for validating a detector against a known-clean part.
+
+## Missing junctions — solved and validated
+
+`src/mark_junction_candidates_tiff.py` finds **2 missing junctions** in the
+`0point5dash1` scan: merged ids 513 at (141, 685, 499) and 2682 at
+(615, 682, 420), both degree 12. The user visually inspected the stack and
+confirmed there are exactly 2 — so this is 2/2 with no false positives or
+negatives. Three independent statistics agree on the same pair (node-intensity
+sphere, strut-center probe, cylinder segmented-voxel counts), and all 24 struts
+incident to them are independently flagged *and* fully empty by the strut
+detector.
+
+Consequence worth carrying: **strut removal in this dataset is clustered, not
+i.i.d.** Two junctions with all 12 incident struts absent is impossible under
+independent removal at 0.5% (0.005¹²). An earlier analysis dismissed both as
+machining artifacts on exactly that reasoning and was wrong. Do not estimate
+expected defect counts from independent-removal probabilities.
+
+### Three findings that make junction detection work
+
+1. **The lattice JSONs list a physical junction many times.** 10206 entries at
+   3430 distinct positions, in groups of 1, 2, 4 or 8, with the junction's
+   incident struts split across the duplicates. Unmerged, degrees run 1–8
+   instead of the lattice's 3–12, every junction-level count is inflated
+   threefold, and any test of the form "every incident strut is missing" is
+   answered for a fragment. `merge_colocated_junctions()` in
+   `overlay_registered_nodes_histogram.py` merges by position; `load_lattice()`
+   routes through it and returns the entry→junction map, which is what carries a
+   per-entry property (the nominal design's y) onto the merged lattice. Struts
+   are not duplicated, so merging leaves strut-level results untouched.
+
+2. **Cut node intensities against the volume's Otsu, never their own.** Otsu
+   maximizes `w0·w1·(m0−m1)²`, which assumes comparably sized classes. A few
+   hundred dark nodes against ~9400 bright ones flattens the objective — 5%
+   variation from 34000 to 48000 — and puts its argmax at 43583, inside the
+   material mode, past the one real gap (empty from 35500 to 39500). It also
+   makes the answer depend on which nodes are scored, so it *degrades* as
+   exclusions improve: on a cleaned set it returned 52952 and flagged 21.6%.
+   The volume's own Otsu (40049) is measured where the balanced-bimodal
+   assumption holds (11.3% material), lands mid-trough, and does not move when
+   junctions are excluded.
+
+3. **The node-sampling radius must absorb the registration drift** (see strut
+   finding 2 below for the drift itself). At `MAX_SAMPLE_RADIUS_VOXELS = 2` the
+   probe flagged 377 junctions beyond x≈700 — 53% of that band against 0.2%
+   elsewhere — purely because the JSON sat off the struts. At radius 8 that band
+   flags nothing. Unlike struts, a junction can tolerate a wide probe: the
+   nearest distinct junction is 55.8 voxels away.
+
+Plus the machined-off bottom face, which is shared with the strut analysis and
+described as strut finding 1.
+
+## Missing struts — working, unvalidated, parked
+
+`src/strut_cylinder_segmentation.py`: segment the volume once at the full-volume
+Otsu threshold, then sweep a cylinder along each nominal strut and count
+segmented voxels inside it. The per-strut statistic is
+`area = n_segmented / sampled_length`, a cross-section in voxels², compared
+against the nominal design cross-section (12.3 vox²).
+
+With `--radii 8 --end-trim 0.25` and the bottom face excluded: **95 struts
+flagged (0.54%), 87 fully empty (0.50%)** against a 0.5% nominal (~92 struts),
+flat across x, y and z at 0.29–0.99% — no positional gradient. Those 95
+decompose into 24 incident to the two missing junctions (all confirmed) and 71
+isolated. The 8 flagged-but-not-empty struts are all isolated and may be *thin*
+rather than missing — a separate defect class. The 71 have not been validated
+against anything.
 
 ### Three findings that dominate any coordinate-sampling approach
 
@@ -58,10 +126,6 @@ for the full challenge description.
    and the blob stays bright when any one is absent, so a full-span cylinder can
    never register an interior strut as empty — after excluding the bottom face
    it found 1 strut in 17460. Trimming 25% off each end restores sensitivity.
-
-  With all three handled (`--radii 8 --end-trim 0.25`, bottom face excluded):
-  **95 struts flagged (0.54%), 87 fully empty (0.50%)** against a 0.5% nominal
-  (~92 struts), flat across x, y and z at 0.29–0.99% — no positional gradient.
 
   Statistics that do *not* work, both verified on real data: the cylinder **mean
   intensity** (a solid/background mixture, so a healthy strut averages near the
