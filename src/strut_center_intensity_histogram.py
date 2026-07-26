@@ -35,6 +35,7 @@ from overlay_registered_nodes_histogram import (
     NPY_PATH,
     REGISTERED_JSON_PATH,
     TIFF_PATH,
+    merge_colocated_junctions,
     sample_volume_at_nodes,
 )
 from mark_missing_junctions_tiff import mark_points, to_rgb_uint8
@@ -50,13 +51,20 @@ MISSING_MARKER_COLOR = (255, 0, 0)
 PRESENT_MARKER_COLOR = (0, 255, 0)
 
 
-def load_lattice(json_path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """Return registered junction positions [x, y, z] and strut junction-id pairs.
+def load_lattice(json_path: Path) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return merged junction positions, strut junction-id pairs, and the entry map.
+
+    Junction entries sharing a position are merged (see
+    ``merge_colocated_junctions``), so a returned junction is a physical one and
+    its degree is the lattice's. Struts are unaffected by the merge -- they are
+    not duplicated -- and are simply relabeled onto merged rows.
 
     Returns:
-        (positions_xyz, strut_junction_ids) with shapes (N_junctions, 3) and
-        (N_struts, 2). Strut entries index rows of ``positions_xyz`` by list
-        order, which the JSON keeps consistent with each junction's ``id``.
+        (positions_xyz, strut_junction_ids, entry_to_junction) with shapes
+        (N_junctions, 3), (N_struts, 2) and (N_entries,). ``N_junctions`` is
+        smaller than the JSON's junction count. ``entry_to_junction`` is
+        returned rather than hidden because it is what carries a per-entry
+        property -- the nominal design's y, say -- onto the merged lattice.
     """
     with json_path.open() as f:
         data = json.load(f)
@@ -65,11 +73,14 @@ def load_lattice(json_path: Path) -> tuple[np.ndarray, np.ndarray]:
     if junction_ids != list(range(len(junction_ids))):
         raise ValueError(f"junction ids in {json_path} are not 0..N-1 in list order")
 
-    positions_xyz = np.array([j["position"] for j in data["junctions"]], dtype=float)
-    strut_junction_ids = np.array(
+    entry_positions_xyz = np.array(
+        [j["position"] for j in data["junctions"]], dtype=float
+    )
+    positions_xyz, entry_to_junction = merge_colocated_junctions(entry_positions_xyz)
+    entry_strut_ids = np.array(
         [[s["junction0"], s["junction1"]] for s in data["struts"]], dtype=int
     )
-    return positions_xyz, strut_junction_ids
+    return positions_xyz, entry_to_junction[entry_strut_ids], entry_to_junction
 
 
 def strut_centers_from_unit_vectors(
@@ -180,13 +191,16 @@ def main() -> None:
     volume_otsu_threshold = threshold_otsu(volume)
     print(f"Full-volume Otsu threshold ({volume.size} voxels): {volume_otsu_threshold:.0f}")
 
-    positions_xyz, strut_junction_ids = load_lattice(REGISTERED_JSON_PATH)
+    positions_xyz, strut_junction_ids, entry_to_junction = load_lattice(
+        REGISTERED_JSON_PATH
+    )
     centers_xyz, unit_vectors, lengths = strut_centers_from_unit_vectors(
         positions_xyz, strut_junction_ids
     )
     n_orientations = len(np.unique(np.round(np.abs(unit_vectors), 3), axis=0))
     print(
-        f"Loaded {len(positions_xyz)} junctions and {len(centers_xyz)} struts "
+        f"Loaded {len(positions_xyz)} junctions (merged from "
+        f"{len(entry_to_junction)} JSON entries) and {len(centers_xyz)} struts "
         f"(length {lengths.min():.1f}-{lengths.max():.1f} voxels, "
         f"{n_orientations} distinct orientations)"
     )

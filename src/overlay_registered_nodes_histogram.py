@@ -36,13 +36,75 @@ NPY_PATH = OUTPUT_DIR / "9x9x9_octet_lattice.npy"
 
 
 def load_node_voxel_coords(json_path: Path) -> np.ndarray:
-    """Return an (N, 3) array of registered node positions as [x, y, z]."""
+    """Return an (N, 3) array of registered node entry positions as [x, y, z]."""
     with json_path.open() as f:
         data = json.load(f)
     return np.array([j["position"] for j in data["junctions"]], dtype=float)
 
 
-MAX_SAMPLE_RADIUS_VOXELS = 2  # radius 2 -> inscribed sphere in a 5x5x5 voxel box
+# Entries in one group must be coincident, not merely close. The bound is a
+# float-noise allowance, deliberately far below any real junction separation
+# (55.8 voxels on this scan) -- and independent of ``decimals``, since a
+# tolerance of one rounding bin could never be exceeded and so could never fire.
+COINCIDENT_TOLERANCE_VOXELS = 1e-6
+
+
+def merge_colocated_junctions(
+    positions_xyz: np.ndarray, decimals: int = 3
+) -> tuple[np.ndarray, np.ndarray]:
+    """Collapse junction entries sharing a position into one junction apiece.
+
+    The lattice JSONs list a physical junction more than once -- 10206 entries at
+    3430 distinct positions on this scan, in groups of 1, 2, 4 or 8 -- splitting
+    its incident struts across the duplicates. Unmerged, a junction's degree is
+    its fragment's (1, 2, 4 or 8) rather than the lattice's (3, 5, 8 or 12), and
+    a test of the form "every incident strut is missing" gets answered for a
+    fragment. Merging also cuts node sampling by a factor of three, since the
+    duplicates probe the same voxels.
+
+    Args:
+        positions_xyz: (N_entries, 3) junction entry positions as [x, y, z].
+        decimals: Entries are grouped after rounding their positions to this
+            many decimals.
+
+    Returns:
+        (merged_positions, entry_to_junction) with shapes (N_junctions, 3) and
+        (N_entries,), where ``entry_to_junction[i]`` is the merged row for entry
+        ``i``. A merged position is the mean of its group.
+
+    Raises:
+        ValueError: If any group's members are not coincident. Grouping is by
+            rounded position, so a lattice whose junctions are merely close --
+            rather than duplicated -- would otherwise be fused into invented
+            midpoints lying between real junctions, which is precisely where
+            ``sample_volume_at_nodes`` would then center its sphere. On this
+            scan the margin is wide: duplicates are exactly coincident while
+            distinct junctions are 55.8 voxels apart.
+    """
+    keys, entry_to_junction = np.unique(
+        np.round(positions_xyz, decimals), axis=0, return_inverse=True
+    )
+    entry_to_junction = entry_to_junction.ravel()
+    n_junctions = len(keys)
+
+    lower = np.full((n_junctions, 3), np.inf)
+    upper = np.full((n_junctions, 3), -np.inf)
+    np.minimum.at(lower, entry_to_junction, positions_xyz)
+    np.maximum.at(upper, entry_to_junction, positions_xyz)
+    spread = float((upper - lower).max())
+    if spread > COINCIDENT_TOLERANCE_VOXELS:
+        raise ValueError(
+            f"junction entries grouped at {decimals} decimals span up to "
+            f"{spread:g} voxels; these are distinct junctions, not duplicates"
+        )
+
+    sums = np.zeros((n_junctions, 3))
+    np.add.at(sums, entry_to_junction, positions_xyz)
+    counts = np.bincount(entry_to_junction, minlength=n_junctions)[:, None]
+    return sums / counts, entry_to_junction
+
+
+MAX_SAMPLE_RADIUS_VOXELS = 8  # radius 8 -> inscribed sphere in a 17x17x17 voxel box
 
 
 def sample_volume_at_nodes(

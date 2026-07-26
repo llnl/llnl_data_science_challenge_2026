@@ -183,33 +183,48 @@ def count_segmented_in_cylinders(
     }
 
 
-def bottom_layer_junctions(nominal_json_path: Path, n_junctions: int) -> np.ndarray:
-    """Flag junctions on the machined-off bottom face of the specimen.
+def bottom_layer_junctions(
+    nominal_json_path: Path, entry_to_junction: np.ndarray, n_junctions: int
+) -> np.ndarray:
+    """Flag merged junctions on the machined-off bottom face of the specimen.
 
     The face is the maximum-Y layer of the *nominal* design lattice. Nominal Y
     corresponds to the registered volume's y axis (r = 1.0000), but the
     registered coordinates are rotated, so the layer cannot be recovered by
     thresholding registered y directly.
 
+    The nominal JSON is read per *entry*, matching the registered file's own
+    entry list, and the resulting layer is then scattered onto merged junctions
+    through ``entry_to_junction``. Nominal y is constant within a group, so the
+    scatter is unambiguous.
+
+    Args:
+        nominal_json_path: The nominal design JSON, on a clean integer grid.
+        entry_to_junction: Entry-to-merged-junction map from ``load_lattice``.
+        n_junctions: Number of merged junctions; the returned mask's length.
+
     Raises:
-        ValueError: If the nominal JSON's junction count or id ordering does
-            not match the registered lattice, which would make the mask
+        ValueError: If the nominal JSON's entry count or id ordering does not
+            match the registered lattice's entries, which would make the mask
             meaningless when applied to the registered analysis.
     """
     with nominal_json_path.open() as f:
         data = json.load(f)
 
     junctions = data["junctions"]
-    if len(junctions) != n_junctions:
+    n_entries = len(entry_to_junction)
+    if len(junctions) != n_entries:
         raise ValueError(
             f"{nominal_json_path} has {len(junctions)} junctions, "
-            f"but the registered lattice has {n_junctions}"
+            f"but the registered lattice has {n_entries} entries"
         )
-    if [j["id"] for j in junctions] != list(range(n_junctions)):
+    if [j["id"] for j in junctions] != list(range(n_entries)):
         raise ValueError(f"junction ids in {nominal_json_path} are not 0..N-1 in list order")
 
     y = np.array([j["position"][1] for j in junctions], dtype=float)
-    return y >= y.max() - 0.5
+    bottom = np.zeros(n_junctions, dtype=bool)
+    bottom[entry_to_junction[y >= y.max() - 0.5]] = True
+    return bottom
 
 
 def save_area_histogram(
@@ -386,14 +401,18 @@ def main() -> None:
         f"({segmentation.mean():.2%} of voxels segmented as material)"
     )
 
-    positions_xyz, all_strut_junction_ids = load_lattice(REGISTERED_JSON_PATH)
+    positions_xyz, all_strut_junction_ids, entry_to_junction = load_lattice(
+        REGISTERED_JSON_PATH
+    )
     n_all_struts = len(all_strut_junction_ids)
 
     if args.keep_bottom_layer:
         strut_junction_ids = all_strut_junction_ids
         print("Keeping struts on the machined-off bottom face (--keep-bottom-layer)")
     else:
-        bottom = bottom_layer_junctions(NOMINAL_JSON_PATH, len(positions_xyz))
+        bottom = bottom_layer_junctions(
+            NOMINAL_JSON_PATH, entry_to_junction, len(positions_xyz)
+        )
         touches_bottom = bottom[all_strut_junction_ids[:, 0]] | bottom[all_strut_junction_ids[:, 1]]
         strut_junction_ids = all_strut_junction_ids[~touches_bottom]
         print(

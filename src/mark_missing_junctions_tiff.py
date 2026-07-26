@@ -1,4 +1,4 @@
-"""Flag junctions whose CT intensity falls below the node-sampled Otsu
+"""Flag junctions whose CT intensity falls below the full-volume Otsu
 threshold as potential missing/disconnected junctions, and burn a red
 marker into each one's location in an RGB TIFF stack for visual QC.
 
@@ -6,6 +6,25 @@ Reuses the volume load, registered-JSON node loading, and voxel sampling
 from overlay_registered_nodes_histogram.py. See that module's docstring for
 why the registered JSON (not the un-registered octet_truss_8x8x8.json) is
 used to locate junctions in this volume's voxel coordinate system.
+
+Why the volume's threshold and not the nodes' own
+-------------------------------------------------
+Otsu maximizes w0*w1*(m0-m1)^2, which assumes two comparably sized classes.
+Only a few hundred of the ~10000 nodes are dark, so that product penalizes
+any cut isolating them and the objective goes flat: between 34000 and 48000
+it varies by 5%, and its argmax lands at 43583 -- past the one real gap in
+the distribution (empty from 35500 to 39500) and well inside the material
+mode. Worse, the answer depends on which nodes are scored, so it degrades as
+the node set is cleaned up: excluding the machined-off bottom face and the
+far-x registration-drift band leaves ~0.17% of nodes genuinely dark, and
+node-sampled Otsu responds by returning 52952 and flagging 21.6% of them.
+
+The volume's own Otsu has neither problem. It is measured where the balanced
+bimodal assumption actually holds (11.3% material against 88.7% background),
+it falls mid-trough for the node distribution, and it is independent of the
+node set -- so it does not move when junctions are excluded. It is also what
+strut_center_intensity_histogram and strut_cylinder_segmentation already cut
+against.
 """
 
 import numpy as np
@@ -17,6 +36,7 @@ from overlay_registered_nodes_histogram import (
     OUTPUT_DIR,
     REGISTERED_JSON_PATH,
     load_node_voxel_coords,
+    merge_colocated_junctions,
     sample_volume_at_nodes,
 )
 
@@ -64,16 +84,21 @@ def main() -> None:
     volume = np.load(NPY_PATH)
     print(f"Volume shape (z, y, x): {volume.shape}, dtype: {volume.dtype}")
 
-    positions_xyz = load_node_voxel_coords(REGISTERED_JSON_PATH)
-    values, voxel_xyz = sample_volume_at_nodes(volume, positions_xyz)
-    print(f"Loaded {len(positions_xyz)} registered junctions")
+    threshold = threshold_otsu(volume)
+    print(f"Full-volume Otsu threshold ({volume.size} voxels): {threshold:.0f}")
 
-    threshold = threshold_otsu(values)
+    entry_positions_xyz = load_node_voxel_coords(REGISTERED_JSON_PATH)
+    positions_xyz, entry_to_junction = merge_colocated_junctions(entry_positions_xyz)
+    values, voxel_xyz = sample_volume_at_nodes(volume, positions_xyz)
+    print(
+        f"Loaded {len(positions_xyz)} registered junctions "
+        f"(merged from {len(entry_to_junction)} JSON entries)"
+    )
+
     missing_mask = values < threshold
     missing_voxel_xyz = voxel_xyz[missing_mask]
     missing_values = values[missing_mask]
     print(
-        f"Node-sampled Otsu threshold = {threshold:.0f}: "
         f"{missing_mask.sum()} potential missing junctions "
         f"({missing_mask.mean():.1%}), {(~missing_mask).sum()} present "
         f"({(~missing_mask).mean():.1%})"
