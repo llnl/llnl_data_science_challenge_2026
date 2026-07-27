@@ -26,7 +26,6 @@ from matplotlib import pyplot as plt
 # Imported after the Agg block: junction_scan pulls in pyplot transitively, and
 # a default backend selected first could try to reach a display.
 from junction_scan import (
-    parse_junction_ids,
     save_marked_tiff,
     save_mip_overlay_with_status,
     save_slice_overlay_with_radius,
@@ -190,7 +189,6 @@ def scan_lattice_junctions(
     registered_json_path: str,
     output_dir: str,
     radius: int = 8,
-    exclude_junction_ids: str = "",
     write_marked_tiff: bool = False,
 ) -> str:
     """Score every lattice junction against a CT volume and report the dark ones.
@@ -214,10 +212,6 @@ def scan_lattice_junctions(
         radius: Sampling sphere radius in voxels. This absorbs residual
             registration drift; 8 is the validated starting point for the 9x9x9
             octet specimens.
-        exclude_junction_ids: Merged junction ids to keep out of the candidate
-            list, comma- or space-separated. Use once the CSV and the overlays
-            have established that those junctions are absent from the part
-            rather than from the scan; they are still scored and counted.
         write_marked_tiff: Also write an RGB TIFF with candidates painted. Costs
             roughly three bytes per input voxel in memory and on disk.
 
@@ -231,12 +225,7 @@ def scan_lattice_junctions(
         output_directory = Path(output_dir).expanduser()
 
         volume = _load_volume(volume_input)
-        result = scan_junctions(
-            volume,
-            registered_path,
-            radius=radius,
-            exclude_junction_ids=parse_junction_ids(exclude_junction_ids),
-        )
+        result = scan_junctions(volume, registered_path, radius=radius)
         summary = summarize_scan(result)
 
         output_directory.mkdir(parents=True, exist_ok=True)
@@ -252,9 +241,8 @@ def scan_lattice_junctions(
             f"{summary['n_junctions']} junctions (merged from {summary['n_entries']} "
             f"JSON entries, degree {summary['degree_min']}-{summary['degree_max']}); "
             f"full-volume Otsu threshold {summary['otsu_threshold']:.0f}.",
-            f"{summary['n_dark']} dark, {summary['n_excluded']} excluded, "
-            f"{summary['n_candidates']} candidates of {summary['n_scored']} scored "
-            f"({_format_fraction(summary['candidate_fraction'])}).",
+            f"{summary['n_dark']} dark of {summary['n_junctions']} junctions "
+            f"({_format_fraction(summary['dark_fraction'])}).",
             f"Largest dark component: {summary['dark_components']['largest']} "
             f"junction(s) across {summary['dark_components']['n_components']} "
             f"component(s).",
@@ -284,7 +272,6 @@ def visualize_junction_overlay(
     axis: int = 0,
     slice_index: int = -1,
     radius: int = 8,
-    exclude_junction_ids: str = "",
 ) -> str:
     """Render the lattice over the CT volume, colored by junction status.
 
@@ -295,8 +282,7 @@ def visualize_junction_overlay(
     sampling sphere is drawn to scale as its cross-section in that plane, so the
     picture shows exactly the voxels a flag was computed from.
 
-    Junctions are green when bright, red when flagged, and orange when dark but
-    excluded.
+    Junctions are green when bright and red when flagged.
 
     Args:
         volume_path: Existing 3D CT volume as ``.npy``, ``.tif``, or ``.tiff``.
@@ -308,8 +294,6 @@ def visualize_junction_overlay(
         slice_index: Slice index for ``mode="slice"``; -1 selects the median
             junction coordinate along ``axis``. Ignored for ``mode="mip"``.
         radius: Sampling sphere radius in voxels, matching the scan being checked.
-        exclude_junction_ids: Merged junction ids to color as excluded rather
-            than as candidates, matching the scan being checked.
 
     Returns:
         A status message with the saved image location, or an error message.
@@ -323,19 +307,14 @@ def visualize_junction_overlay(
         destination = Path(output_path).expanduser()
 
         volume = _load_volume(volume_input)
-        result = scan_junctions(
-            volume,
-            registered_path,
-            radius=radius,
-            exclude_junction_ids=parse_junction_ids(exclude_junction_ids),
-        )
+        result = scan_junctions(volume, registered_path, radius=radius)
 
         if mode == "mip":
             save_mip_overlay_with_status(volume, result, destination, axis=axis)
             return (
                 f"Junction overlay saved to {destination} "
                 f"({'zyx'[axis]} max-intensity projection, radius {result.radius}, "
-                f"{int(result.candidate.sum())} candidates of {result.n_junctions} "
+                f"{int(result.dark.sum())} candidates of {result.n_junctions} "
                 f"junctions)"
             )
 
@@ -348,7 +327,7 @@ def visualize_junction_overlay(
         )
         return (
             f"Junction overlay saved to {destination} (slice {'zyx'[axis]}={index}, "
-            f"radius {result.radius}, {int(result.candidate.sum())} candidates of "
+            f"radius {result.radius}, {int(result.dark.sum())} candidates of "
             f"{result.n_junctions} junctions)"
         )
     except Exception as exc:
@@ -374,12 +353,12 @@ def _describe_worst_band(summary: dict) -> str:
         if band["dark_fraction"] is not None
     ]
     if not ranked:
-        return "No scored junctions to band."
+        return "No junctions to band."
     fraction, name, band = max(ranked, key=lambda item: item[0])
     return (
         f"Highest dark fraction in any band: {fraction:.2%} "
         f"({name} {band['lo']:.0f}-{band['hi']:.0f}, {band['n_dark']}/"
-        f"{band['n_scored']})."
+        f"{band['n_junctions']})."
     )
 
 

@@ -63,34 +63,33 @@ def main() -> None:
     volume = np.load(NPY_PATH)
     print(f"Volume shape (z, y, x): {volume.shape}, dtype: {volume.dtype}")
 
-    result = scan_junctions(
-        volume, REGISTERED_JSON_PATH, radius=MARKER_RADIUS_VOXELS
-    )
-    # The machined-off face is a property of *this* specimen, so it is excluded
-    # here rather than inside the detector, which knows nothing about any
-    # particular part. An agent working from ``scan_junctions`` reaches the same
-    # set by reading the CSV and the overlays.
-    result = replace(
-        result,
-        excluded=bottom_layer_junctions(
-            NOMINAL_JSON_PATH, result.entry_to_junction, result.n_junctions
-        ),
-    )
-    print(f"Full-volume Otsu threshold ({volume.size} voxels): {result.threshold:.0f}")
+    scan = scan_junctions(volume, REGISTERED_JSON_PATH, radius=MARKER_RADIUS_VOXELS)
+    print(f"Full-volume Otsu threshold ({volume.size} voxels): {scan.threshold:.0f}")
     print(
-        f"Loaded {result.n_junctions} junctions (merged from "
-        f"{len(result.entry_to_junction)} JSON entries), degree "
-        f"{result.degree.min()}-{result.degree.max()}"
+        f"Loaded {scan.n_junctions} junctions (merged from "
+        f"{len(scan.entry_to_junction)} JSON entries), degree "
+        f"{scan.degree.min()}-{scan.degree.max()}"
     )
 
-    candidate = result.candidate
+    # The machined-off face is a property of *this* specimen, so it is dropped
+    # here rather than inside the detector, which knows nothing about any
+    # particular part. Clearing those junctions' ``dark`` flags takes them out of
+    # everything downstream -- the printed list and the painted markers. An agent
+    # working from ``scan_junctions`` reaches the same set by reading the CSV and
+    # the overlays.
+    face = bottom_layer_junctions(
+        NOMINAL_JSON_PATH, scan.entry_to_junction, scan.n_junctions
+    )
+    result = replace(scan, dark=scan.dark & ~face)
+    candidate = result.dark
+    n_scored = int((~face).sum())
     print(
-        f"Dark junctions: {result.dark.sum()}, of which "
-        f"{(result.dark & result.excluded).sum()} lie on the machined-off bottom face"
+        f"Dark junctions: {scan.dark.sum()}, of which "
+        f"{(scan.dark & face).sum()} lie on the machined-off bottom face"
     )
     print(
-        f"Candidates: {candidate.sum()} of {(~result.excluded).sum()} scored "
-        f"junctions ({candidate.sum() / (~result.excluded).sum():.2%})"
+        f"Candidates: {candidate.sum()} of {n_scored} scored "
+        f"junctions ({candidate.sum() / n_scored:.2%})"
     )
     for junction in np.flatnonzero(candidate):
         x, y, z = result.voxel_xyz[junction]

@@ -203,7 +203,7 @@ def test_scan_lattice_junctions_reports_the_dark_junction(
 
     assert "Error" not in result
     assert "27 junctions (merged from 54 JSON entries, degree 3-6)" in result
-    assert "1 candidates of 27 scored" in result
+    assert "1 dark of 27 junctions" in result
     assert "Largest dark component: 1 junction(s) across 1 component(s)." in result
 
     csv_path = output_dir / "junction_scan_r8.csv"
@@ -211,7 +211,7 @@ def test_scan_lattice_junctions_reports_the_dark_junction(
     assert str(csv_path) in result and str(summary_path) in result
 
     summary = json.loads(summary_path.read_text())
-    assert summary["n_candidates"] == 1
+    assert summary["n_dark"] == 1
     assert len(csv_path.read_text().splitlines()) == 28
 
 
@@ -226,7 +226,7 @@ def test_scan_lattice_junctions_accepts_a_tiff_volume(
         str(synthetic_lattice.registered_json_path),
         str(tmp_path / "scan"),
     )
-    assert "1 candidates of 27 scored" in result
+    assert "1 dark of 27 junctions" in result
 
 
 def test_scan_lattice_junctions_tags_outputs_by_radius(
@@ -246,20 +246,6 @@ def test_scan_lattice_junctions_tags_outputs_by_radius(
         "junction_scan_r4.csv",
         "junction_scan_r8.csv",
     }
-
-
-def test_scan_lattice_junctions_excludes_listed_junctions(
-    synthetic_lattice, tmp_path: Path
-) -> None:
-    """The caller decides what is systematic; the tool only takes the ids back."""
-    result = mcp_server.scan_lattice_junctions(
-        str(synthetic_lattice.volume_path),
-        str(synthetic_lattice.registered_json_path),
-        str(tmp_path / "scan"),
-        exclude_junction_ids="0,1,2,3,4,5,6,7,8",
-    )
-    assert "9 excluded" in result
-    assert "of 18 scored" in result
 
 
 def test_scan_lattice_junctions_writes_a_marked_tiff(
@@ -317,7 +303,6 @@ def test_visualize_junction_overlay_defaults_to_the_median_slice(
         ({"registered_json_path": "missing.json"}, "registered_json_path not found"),
         ({"registered_json_path": "lattice.txt"}, "must have a .json extension"),
         ({"radius": 0}, "radius must be a positive"),
-        ({"exclude_junction_ids": "99999"}, "exclude_junction_ids must lie in"),
     ],
 )
 def test_scan_lattice_junctions_errors(

@@ -50,7 +50,7 @@ the scan.
      say so.
 
 3. **Baseline scan at radius 8.** Call `scan_lattice_junctions` with
-   `radius=8`, no exclusions. Read the returned counts and open the summary JSON.
+   `radius=8`. Read the returned counts and open the summary JSON.
 
 4. **Sweep the radius.** Repeat at `radius=4` and `radius=12`. Outputs are
    tagged by radius, so nothing is overwritten. How the dark count *moves* is
@@ -60,12 +60,15 @@ the scan.
    finding you identify — a machined face is a real, reportable property of the
    specimen, not something to silently drop.
 
-6. **Stochastic pass.** Only once systematic effects are identified: collect
-   the ids of the region you found from the CSV and re-run at `radius=8` with
-   them in `exclude_junction_ids`. What survives is the missing-junction list.
+6. **Stochastic pass.** Only once systematic effects are identified: separate
+   the dark set in the CSV into the systematic region you found and everything
+   else. That remainder is the missing-junction list — usually the rows with
+   `component_size` 1, but use the ids of the component or band you actually
+   identified. Nothing is re-run; a junction's darkness does not depend on what
+   any other junction is doing.
 
-   Exclude only what you have shown is missing from the *part*, and say in the
-   report what you excluded and why. Excluding junctions because they are
+   Set aside only what you have shown is missing from the *part*, and say in the
+   report what you set aside and why. Dropping junctions because they are
    inconvenient turns a systematic finding into a silent one.
 
 7. **Verify each surviving candidate by eye.** For each, call
@@ -83,14 +86,14 @@ Read these from the summary JSON: `dark_components`, `dark_fraction_by_band`,
 `component_size`. Then look at the images.
 
 The one number that does most of the work is **`dark_components.largest` divided
-by `n_candidates`**: the share of the dark set sitting in a single connected
+by `n_dark`**: the share of the dark set sitting in a single connected
 lump. Absent *material* is contiguous. Junctions that merely missed their struts
 are scattered.
 
 | Signal | Reading |
 |---|---|
-| `largest / n_candidates` near 1 at r=4 and r=8, concentrated in one band or octant | A region absent from the part: machined face, unprinted end, lattice past the scanned field. Systematic, and reportable as a finding. |
-| `largest / n_candidates` well below 1 (roughly 0.6 or less), dark count falling steeply with radius, spread over many components | Misalignment or drift. Not defects. |
+| `largest / n_dark` near 1 at r=4 and r=8, concentrated in one band or octant | A region absent from the part: machined face, unprinted end, lattice past the scanned field. Systematic, and reportable as a finding. |
+| `largest / n_dark` well below 1 (roughly 0.6 or less), dark count falling steeply with radius, spread over many components | Misalignment or drift. Not defects. |
 | Markers visibly off the lattice in the overlays | Misalignment, whatever the numbers say. The images outrank the statistics here. |
 | `component_size` 1 and `dark_neighbor_count` 0, stable across radii | A stochastically missing junction. This is the reportable defect. |
 | Nothing hot, no component above size 1 | Clean at junction level. |
@@ -117,7 +120,7 @@ Two things to take from that table:
 
 Once you believe a region is absent from the part, get its junction ids from the
 CSV — the rows in that component, or the rows in the band you identified — and
-pass them to `exclude_junction_ids`.
+account for them separately from the rest of the dark set in the report.
 
 ## Choosing the radius
 
@@ -147,10 +150,10 @@ Write `junction_scan_report.md` containing:
 - **Alignment verdict: PASS / FAIL / UNCERTAIN**, with the overlay images cited
   as evidence.
 - Systematic findings, each with the statistic that shows it (component size,
-  which band or octant, how it moved with radius), and what you excluded as a
-  result — how many junctions and on what basis.
-- The radius sweep as a small table: radius against dark count, candidate count,
-  and largest component.
+  which band or octant, how it moved with radius), and how many junctions you
+  attributed to it and on what basis.
+- The radius sweep as a small table: radius against dark count and largest
+  component.
 - Surviving candidates: junction id, x, y, z, intensity, degree, and whether you
   visually confirmed it.
 - Anything you could not determine. If a check could not be run, say so plainly
@@ -166,7 +169,7 @@ and that reasoning has already produced a wrong conclusion once.
   JSON entries were not merged and every junction-level count is wrong.
 - `n_junctions` is smaller than `n_entries`, typically by about a factor of 3.
 - The Otsu threshold is the full-volume one and does not change between runs on
-  the same volume, whatever is excluded.
+  the same volume.
 - Every candidate you report has been looked at in a slice overlay.
 
 ## Notes
@@ -180,18 +183,18 @@ and that reasoning has already produced a wrong conclusion once.
   column in the CSV maps back to the source file.
 - **Thresholding is always against the full volume's Otsu**, never against the
   sampled node intensities. A node-fitted threshold lands inside the material
-  mode and gets worse as exclusions improve.
+  mode, and it moves with whichever nodes you feed it.
 - **Coordinates**: JSON positions are `[x, y, z]`; the volume is indexed
   `(z, y, x)`. Slice `axis` 0/1/2 means z/y/x.
 - **No defect is assumed.** Nothing in the tools knows that the 9x9x9 specimens
   were machined on one face; you find it, every run, from the component sizes
   and the images. A different specimen with a different systematic — or none at
-  all — is read the same way. Never carry a previous scan's exclusions into a
+  all — is read the same way. Never carry a previous scan's conclusions into a
   new one.
 - The per-junction CSV has a row for **every** junction, flagged or not, with
   its component size and dark-neighbour count. That is where you get the ids of
-  a region you want to exclude, and it lets you re-band or re-group the
-  specimen without re-running the scan.
+  a region you want to account for separately, and it lets you re-band or
+  re-group the specimen without re-running the scan.
 - Registered JSON filenames in this dataset contain spaces; quote them.
 
 ### Reference result
@@ -200,7 +203,7 @@ On `data/9x9x9_octet_lattice/9x9x9_octet_lattice.tif` with its registered JSON a
 radius 8: 3430 junctions merged from 10206 entries, degree 3–12, full-volume
 Otsu 40049, 173 dark. Of those, 171 form a single connected component on the
 machined-off face — ratio 0.99, found from the statistic rather than assumed.
-Excluding that component leaves exactly **2** candidates: junctions 513 at
+Setting that component aside leaves exactly **2** candidates: junctions 513 at
 (141, 685, 499) and 2682 at (615, 682, 420), both degree 12, both size-1
 components with no dark neighbours. Human inspection of that stack confirms
 exactly 2 missing junctions. A run on this scan that reports a different number

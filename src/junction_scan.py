@@ -35,8 +35,9 @@ bright and must be found at strut level -- see ``strut_cylinder_segmentation``.
 Nothing here knows anything about a particular specimen. The module measures and
 describes; deciding that a given region is absent from the *part* rather than
 from the scan is the caller's job, done by looking at the statistics, the CSV
-and the overlays. A caller that reaches that conclusion drops those junctions
-with ``exclude_junction_ids``.
+and the overlays. Every dark junction is reported either way -- the per-junction
+component sizes already say which ones belong to a systematic lump, so nothing
+has to be suppressed to read the stochastic ones off.
 
 Coordinate conventions follow the rest of the pipeline: JSON ``position`` fields
 are [x, y, z] and index the volume's (z, y, x) axes.
@@ -44,7 +45,6 @@ are [x, y, z] and index the volume's (z, y, x) axes.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -86,7 +86,6 @@ class JunctionScanResult:
         intensities: (N,) brightest voxel within ``radius`` of each junction.
         degree: (N,) number of incident struts, 3-12 for this lattice.
         dark: (N,) True where ``intensities`` fell below ``threshold``.
-        excluded: (N,) True for junctions the caller removed from scoring.
         strut_junction_ids: (S, 2) merged junction ids joined by each strut.
         entry_to_junction: (E,) merged junction id of each JSON entry.
         threshold: The full-volume Otsu threshold that ``dark`` was cut against.
@@ -98,16 +97,10 @@ class JunctionScanResult:
     intensities: np.ndarray
     degree: np.ndarray
     dark: np.ndarray
-    excluded: np.ndarray
     strut_junction_ids: np.ndarray
     entry_to_junction: np.ndarray
     threshold: float
     radius: int
-
-    @property
-    def candidate(self) -> np.ndarray:
-        """(N,) dark junctions that were not excluded -- the reportable flags."""
-        return self.dark & ~self.excluded
 
     @property
     def n_junctions(self) -> int:
@@ -118,7 +111,6 @@ def scan_junctions(
     volume: np.ndarray,
     registered_json_path: str | Path,
     radius: int = MAX_SAMPLE_RADIUS_VOXELS,
-    exclude_junction_ids: Iterable[int] = (),
 ) -> JunctionScanResult:
     """Sample the volume at every merged junction and flag the dark ones.
 
@@ -129,17 +121,12 @@ def scan_junctions(
         radius: Sampling sphere radius in voxels. This is the free parameter
             that absorbs residual registration drift; see the module docstring
             of ``mark_junction_candidates_tiff`` for what too small looks like.
-        exclude_junction_ids: Merged junction ids to keep out of the candidate
-            list. Use this once the caller has established, from the statistics
-            and the images, that those junctions are absent from the *part*
-            rather than from the scan. They are still scored and reported.
 
     Returns:
         A ``JunctionScanResult``.
 
     Raises:
-        ValueError: If ``radius`` is not positive, if ``volume`` is not 3D, or
-            if an excluded id is out of range.
+        ValueError: If ``radius`` is not positive or ``volume`` is not 3D.
     """
     if volume.ndim != 3:
         raise ValueError(f"expected a 3D volume, found {volume.ndim} dimensions")
@@ -155,23 +142,12 @@ def scan_junctions(
     degree = np.bincount(strut_junction_ids.ravel(), minlength=n_junctions)
     intensities, voxel_xyz = sample_volume_at_nodes(volume, positions_xyz, radius)
 
-    excluded = np.zeros(n_junctions, dtype=bool)
-    extra = np.asarray(list(exclude_junction_ids), dtype=int)
-    if extra.size:
-        if extra.min() < 0 or extra.max() >= n_junctions:
-            raise ValueError(
-                f"exclude_junction_ids must lie in 0..{n_junctions - 1}, got "
-                f"{extra.min()}..{extra.max()}"
-            )
-        excluded[extra] = True
-
     return JunctionScanResult(
         positions_xyz=positions_xyz,
         voxel_xyz=voxel_xyz,
         intensities=intensities,
         degree=degree,
         dark=intensities < threshold,
-        excluded=excluded,
         strut_junction_ids=strut_junction_ids,
         entry_to_junction=entry_to_junction,
         threshold=threshold,
@@ -228,36 +204,35 @@ def dark_component_sizes(
 
 
 def _band_stats(
-    coordinate: np.ndarray, scored: np.ndarray, flagged: np.ndarray, n_bands: int
+    coordinate: np.ndarray, dark: np.ndarray, n_bands: int
 ) -> list[dict]:
-    """Split scored junctions into equal-width bands along one coordinate.
+    """Split the junctions into equal-width bands along one coordinate.
 
     Bands are equal *width*, not equal count, because the questions being asked
     of them are geometric -- "is one side of the specimen dark" -- and because
     a lattice puts many junctions at identical coordinates, which collapses
     quantile edges.
     """
-    values = coordinate[scored]
-    if values.size == 0:
+    if coordinate.size == 0:
         return []
 
-    lo, hi = float(values.min()), float(values.max())
+    lo, hi = float(coordinate.min()), float(coordinate.max())
     edges = np.linspace(lo, hi, n_bands + 1)
     # ``np.digitize`` puts the maximum in a band of its own; fold it back.
     index = np.clip(np.digitize(coordinate, edges[1:-1]), 0, n_bands - 1)
 
     bands = []
     for band in range(n_bands):
-        in_band = scored & (index == band)
+        in_band = index == band
         n = int(in_band.sum())
-        n_flagged = int((in_band & flagged).sum())
+        n_dark = int((in_band & dark).sum())
         bands.append(
             {
                 "lo": float(edges[band]),
                 "hi": float(edges[band + 1]),
-                "n_scored": n,
-                "n_dark": n_flagged,
-                "dark_fraction": (n_flagged / n) if n else None,
+                "n_junctions": n,
+                "n_dark": n_dark,
+                "dark_fraction": (n_dark / n) if n else None,
             }
         )
     return bands
@@ -266,9 +241,9 @@ def _band_stats(
 def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
     """Reduce a scan to a JSON-serializable summary aimed at triage.
 
-    The spatial fields all describe *non-excluded* junctions, with non-excluded
-    dark junctions (``result.candidate``) as the numerator, so the same summary
-    reads correctly before and after a systematic region is excluded.
+    Every dark junction is a *candidate*: the summary says where the dark ones
+    are and how they clump, and the caller reads a systematic region off the
+    component sizes rather than the summary hiding it.
 
     Args:
         result: A scan to summarize.
@@ -279,16 +254,15 @@ def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
         connected-component sizes, and a per-candidate record. Every value is a
         plain Python type, so the dict survives ``json.dumps`` unchanged.
     """
-    scored = ~result.excluded
-    candidate = result.candidate
+    dark = result.dark
     neighbors = dark_neighbor_counts(
-        result.strut_junction_ids, candidate, result.n_junctions
+        result.strut_junction_ids, dark, result.n_junctions
     )
     components = dark_component_sizes(
-        result.strut_junction_ids, candidate, result.n_junctions
+        result.strut_junction_ids, dark, result.n_junctions
     )
 
-    candidate_ids = np.flatnonzero(candidate)
+    candidate_ids = np.flatnonzero(dark)
     candidates = [
         {
             "junction_id": int(j),
@@ -309,7 +283,7 @@ def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
     # ``size_histogram`` is a list rather than a size-keyed dict because
     # ``json.dumps`` silently stringifies integer keys, so a dict would not
     # survive the round trip through the summary file an agent reads back.
-    component_sizes = components[candidate]
+    component_sizes = components[dark]
     unique_sizes, member_counts = np.unique(component_sizes, return_counts=True)
     size_histogram = [
         {"size": int(size), "count": int(count // size)}
@@ -318,45 +292,43 @@ def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
 
     centers = {}
     for axis_name, column in (("x", 0), ("y", 1), ("z", 2)):
-        values = result.positions_xyz[scored, column]
+        values = result.positions_xyz[:, column]
         centers[axis_name] = (
             float((values.min() + values.max()) / 2.0) if values.size else 0.0
         )
-    octant_index = sum(
-        (result.positions_xyz[:, column] > centers[name]).astype(int) << bit
-        for bit, (name, column) in enumerate((("x", 0), ("y", 1), ("z", 2)))
-    )
+    octant_index = np.zeros(result.n_junctions, dtype=int)
+    for bit, (name, column) in enumerate((("x", 0), ("y", 1), ("z", 2))):
+        above = result.positions_xyz[:, column] > centers[name]
+        octant_index |= above.astype(int) << bit
+
     octants = []
     for cell in range(8):
-        in_cell = scored & (octant_index == cell)
+        in_cell = octant_index == cell
         n = int(in_cell.sum())
-        n_dark = int((in_cell & candidate).sum())
+        n_dark_in_cell = int((in_cell & dark).sum())
         octants.append(
             {
                 "octant": f"{'+' if cell & 1 else '-'}x"
                 f"{'+' if cell & 2 else '-'}y"
                 f"{'+' if cell & 4 else '-'}z",
-                "n_scored": n,
-                "n_dark": n_dark,
-                "dark_fraction": (n_dark / n) if n else None,
+                "n_junctions": n,
+                "n_dark": n_dark_in_cell,
+                "dark_fraction": (n_dark_in_cell / n) if n else None,
             }
         )
 
-    n_scored = int(scored.sum())
+    n_junctions = int(result.n_junctions)
+    n_dark = int(dark.sum())
     return {
         "radius": result.radius,
         "otsu_threshold": result.threshold,
         "n_entries": int(len(result.entry_to_junction)),
-        "n_junctions": int(result.n_junctions),
+        "n_junctions": n_junctions,
         "n_struts": int(len(result.strut_junction_ids)),
         "degree_min": int(result.degree.min()),
         "degree_max": int(result.degree.max()),
-        "n_dark": int(result.dark.sum()),
-        "n_excluded": int(result.excluded.sum()),
-        "n_dark_excluded": int((result.dark & result.excluded).sum()),
-        "n_scored": n_scored,
-        "n_candidates": int(candidate.sum()),
-        "candidate_fraction": (int(candidate.sum()) / n_scored) if n_scored else None,
+        "n_dark": n_dark,
+        "dark_fraction": (n_dark / n_junctions) if n_junctions else None,
         "intensity": {
             "min": float(result.intensities.min()),
             "max": float(result.intensities.max()),
@@ -364,15 +336,13 @@ def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
             "median": float(np.median(result.intensities)),
         },
         "dark_fraction_by_band": {
-            name: _band_stats(
-                result.positions_xyz[:, column], scored, candidate, n_bands
-            )
+            name: _band_stats(result.positions_xyz[:, column], dark, n_bands)
             for name, column in (("x", 0), ("y", 1), ("z", 2))
         },
         "dark_fraction_by_octant": octants,
         "dark_components": {
             "n_components": int(sum(entry["count"] for entry in size_histogram)),
-            "largest": int(component_sizes.max()) if candidate.any() else 0,
+            "largest": int(component_sizes.max()) if dark.any() else 0,
             "size_histogram": size_histogram,
         },
         "candidates": candidates,
@@ -380,7 +350,7 @@ def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
 
 
 CSV_HEADER = (
-    "junction_id,x,y,z,intensity,degree,dark,excluded,dark_neighbor_count,"
+    "junction_id,x,y,z,intensity,degree,dark,dark_neighbor_count,"
     "component_size,entry_ids"
 )
 
@@ -391,7 +361,7 @@ def write_junction_csv(csv_path: str | Path, result: JunctionScanResult) -> Path
     Every junction is written, not just the candidates, so a caller can do its
     own spatial reasoning -- re-band the specimen, correlate with degree, check
     whether a neighborhood is uniformly dim, decide that a whole face is absent
-    and collect its ids -- without re-running the scan.
+    -- without re-running the scan.
 
     Merged ids do not index the JSON's ``junctions`` array, so each row also
     carries the source entry ids it was built from.
@@ -399,12 +369,11 @@ def write_junction_csv(csv_path: str | Path, result: JunctionScanResult) -> Path
     path = Path(csv_path).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    candidate = result.candidate
     neighbors = dark_neighbor_counts(
-        result.strut_junction_ids, candidate, result.n_junctions
+        result.strut_junction_ids, result.dark, result.n_junctions
     )
     components = dark_component_sizes(
-        result.strut_junction_ids, candidate, result.n_junctions
+        result.strut_junction_ids, result.dark, result.n_junctions
     )
     entries_by_junction: list[list[int]] = [[] for _ in range(result.n_junctions)]
     for entry, junction in enumerate(result.entry_to_junction):
@@ -418,8 +387,7 @@ def write_junction_csv(csv_path: str | Path, result: JunctionScanResult) -> Path
             f.write(
                 f"{junction},{x},{y},{z},{result.intensities[junction]},"
                 f"{result.degree[junction]},{int(result.dark[junction])},"
-                f"{int(result.excluded[junction])},{neighbors[junction]},"
-                f"{components[junction]},{entries}\n"
+                f"{neighbors[junction]},{components[junction]},{entries}\n"
             )
     return path
 
@@ -435,9 +403,8 @@ def save_slice_overlay_with_radius(
 
     A junction ``d`` voxels off the slice plane intersects it in a circle of
     radius ``sqrt(radius^2 - d^2)``, and that is what is drawn -- so the picture
-    shows exactly the voxels the flag was computed from. Circles are colored
-    green for bright, red for a candidate, and orange for a dark junction that
-    was excluded.
+    shows exactly the voxels the flag was computed from. Circles are green for a
+    bright junction and red for a dark one.
 
     Args:
         volume: 3D CT volume in (z, y, x) order.
@@ -476,8 +443,7 @@ def save_slice_overlay_with_radius(
         axes.imshow(np.take(volume, index, axis=axis), cmap="gray")
         groups = (
             (visible & ~result.dark, "lime", "junction present"),
-            (visible & result.dark & result.excluded, "orange", "dark, excluded"),
-            (visible & result.candidate, "red", "candidate"),
+            (visible & result.dark, "red", "candidate"),
         )
         for mask, color, label in groups:
             for junction in np.flatnonzero(mask):
@@ -543,20 +509,16 @@ def save_mip_overlay_with_status(
             linewidths=0,
             label=f"junction present ({int(present.sum())})",
         )
-        for mask, color, label in (
-            (result.dark & result.excluded, "orange", "dark, excluded"),
-            (result.candidate, "red", "candidate"),
-        ):
-            if mask.any():
-                axes.scatter(
-                    result.positions_xyz[mask, horizontal],
-                    result.positions_xyz[mask, vertical],
-                    s=30,
-                    facecolors="none",
-                    edgecolors=color,
-                    linewidths=1,
-                    label=f"{label} ({int(mask.sum())})",
-                )
+        if result.dark.any():
+            axes.scatter(
+                result.positions_xyz[result.dark, horizontal],
+                result.positions_xyz[result.dark, vertical],
+                s=30,
+                facecolors="none",
+                edgecolors="red",
+                linewidths=1,
+                label=f"candidate ({int(result.dark.sum())})",
+            )
         axes.legend(loc="upper right")
         horizontal_label, vertical_label = _AXIS_LABELS[axis]
         axes.set_title(
@@ -591,19 +553,9 @@ def save_marked_tiff(
     rgb_volume = to_rgb_uint8(volume)
     mark_points(
         rgb_volume,
-        result.voxel_xyz[result.candidate],
+        result.voxel_xyz[result.dark],
         result.radius,
         CANDIDATE_COLOR,
     )
     tifffile.imwrite(path, rgb_volume, photometric="rgb", bigtiff=True)
     return path
-
-
-def parse_junction_ids(text: str) -> Sequence[int]:
-    """Parse a comma- or whitespace-separated list of junction ids.
-
-    Empty and whitespace-only input yields an empty sequence, so a caller can
-    pass through an unset optional argument unchanged.
-    """
-    tokens = text.replace(",", " ").split()
-    return [int(token) for token in tokens]

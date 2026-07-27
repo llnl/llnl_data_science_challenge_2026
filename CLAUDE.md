@@ -6,6 +6,9 @@ Repository conventions (structure, setup, coding style, testing, commits/PRs)
 live in `AGENTS.md` — read that file too; treat it as authoritative for those
 topics rather than duplicating them here.
 
+## Philosophy
+Prefer *simple* over complex. Always think twice before adding a feature. When weighing solutions, simple solutions should be weighed much higher than complex ones — this is a scientific project, code must be verifiable, maintainable, and interpretable. Complex solutions cost in these areas. Resist the tendency to over-engineer. Think like a scientist, not a software engineer. 
+
 ## Project
 
 LLNL Data Science Challenge 2026 — building an agentic-AI workflow for analyzing
@@ -32,8 +35,11 @@ for the full challenge description.
       take only a volume and a registered JSON. An `exclude_bottom_face` flag
       hardcoded this one specimen's machining artifact; the other eight scans
       will not share it. The agent now finds a systematic region from the
-      component sizes, the band fractions and the overlays, then drops it with
-      `exclude_junction_ids` read off the per-junction CSV.
+      component sizes, the band fractions and the overlays, and accounts for it
+      separately when reading the per-junction CSV. The tools report every dark
+      junction and suppress nothing — an `exclude_junction_ids` parameter came
+      and went, since a junction's darkness never depended on any other
+      junction's status and excluding only changed the bookkeeping.
 
 **Current focus is missing junctions, not missing struts.** The strut detector
 works and its findings are recorded below, but validating it is parked.
@@ -99,7 +105,7 @@ expected defect counts from independent-removal probabilities.
    flags nothing. Unlike struts, a junction can tolerate a wide probe: the
    nearest distinct junction is 55.8 voxels away.
 
-4. **`dark_components.largest / n_candidates` separates a systematic absence
+4. **`dark_components.largest / n_dark` separates a systematic absence
    from misalignment.** Absent material is contiguous; junctions that merely
    missed their struts are scattered. Measured on the reference volume against
    three lattices — dark count, largest component, ratio:
@@ -119,10 +125,11 @@ expected defect counts from independent-removal probabilities.
 
 Plus the machined-off bottom face, which is shared with the strut analysis and
 described as strut finding 1. It is no longer special-cased in the junction
-tools: they rediscover it every run as one component of 171, and a caller drops
-it with `exclude_junction_ids`. `mark_junction_candidates_tiff.py` still uses
-`bottom_layer_junctions()` directly, which is the right place for it — that
-script is hardcoded to this specimen, and the detector is not.
+tools: they rediscover it every run as one component of 171, report it alongside
+everything else, and leave the caller to account for it separately.
+`mark_junction_candidates_tiff.py` still uses `bottom_layer_junctions()`
+directly, which is the right place for it — that script is hardcoded to this
+specimen, and the detector is not.
 
 ## Missing struts — working, unvalidated, parked
 
