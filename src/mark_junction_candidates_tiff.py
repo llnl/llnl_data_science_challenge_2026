@@ -64,9 +64,12 @@ def main() -> None:
     result = scan_junctions(
         volume,
         REGISTERED_JSON_PATH,
+        NOMINAL_JSON_PATH,
         radius=MARKER_RADIUS_VOXELS,
-        nominal_json_path=NOMINAL_JSON_PATH,
-        exclude_bottom_face=True,
+        # The machined-off face is the design's maximum-Y layer. Naming it as a
+        # design layer rather than as a built-in flag keeps this specimen's
+        # machining artifact out of the detector itself.
+        exclude_design_layers=("y=max",),
     )
     print(f"Full-volume Otsu threshold ({volume.size} voxels): {result.threshold:.0f}")
     print(

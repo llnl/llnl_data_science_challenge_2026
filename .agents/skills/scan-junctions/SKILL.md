@@ -22,8 +22,12 @@ alignment verdict gates everything after it.
   coordinates, normally from a `registered_jsons/` directory. Nominal and raw
   design JSONs are in a different coordinate system and will flag nearly
   everything; check the scan/JSON pairing before starting.
-- **Nominal JSON** (optional) — the design lattice on a clean integer grid.
-  Only needed to exclude a machined-off bottom face.
+- **Nominal JSON** (required) — the same lattice as designed, on a clean integer
+  grid. Registered coordinates are rotated, so the design grid is the only place
+  a face or slab of the part can be *named*. Every scan reports a dark fraction
+  per design layer, and that is the statistic that finds a missing region on a
+  specimen you have never seen before. The two files must list the same entries
+  in the same order; a mismatched pair is rejected rather than guessed at.
 
 Never modify an input. Put every artifact in one output directory named for
 the scan.
@@ -58,10 +62,14 @@ the scan.
    finding you identify — a machined face is a real, reportable property of the
    specimen, not something to silently drop.
 
-6. **Stochastic pass.** Only once systematic effects are identified and
-   excluded: re-run at `radius=8` with `exclude_bottom_face` (if a machined face
-   was found and the nominal JSON is available) and/or `exclude_junction_ids`
-   for any other systematic region. What survives is the missing-junction list.
+6. **Stochastic pass.** Only once systematic effects are identified: re-run at
+   `radius=8` naming each absent region in `exclude_design_layers` (`"y=max"`,
+   `"z=min"`, `"x=19"`, comma-separated) and any leftover region in
+   `exclude_junction_ids`. What survives is the missing-junction list.
+
+   Exclude only what you have shown is missing from the *part*. Excluding a
+   layer because it is inconvenient turns a systematic finding into a silent
+   one, and the excluded junctions are still scored and counted either way.
 
 7. **Verify each surviving candidate by eye.** For each, call
    `visualize_junction_overlay` with `mode="slice"` and `slice_index` set to
@@ -73,34 +81,43 @@ the scan.
 
 ## Classification
 
-Read these from the summary JSON: `dark_fraction_by_band`,
-`dark_fraction_by_octant`, `dark_components`, and each candidate's
-`dark_neighbor_count` and `component_size`.
+Read these from the summary JSON: **`dark_fraction_by_design_layer`** first,
+then `dark_fraction_by_band`, `dark_fraction_by_octant`, `dark_components`, and
+each candidate's `dark_neighbor_count` and `component_size`.
+
+`dark_fraction_by_design_layer` is the primary systematic test. It groups
+junctions by their coordinate on the *design* grid, one record per layer per
+axis, so a region absent from the part appears as a layer at or near a dark
+fraction of 1 — whichever face of whichever specimen it lands on.
 
 | Signal | Reading |
 |---|---|
-| Dark count **and** `dark_components.largest` both fall steeply with radius, darkness spread over many components | Misalignment or drift. Not defects. |
-| Dark count falls with radius but one component **persists** and holds most of what is left | A missing region: a machined face, an unprinted corner, or lattice extending past the scan. Systematic. |
-| A band hot at every radius with the hot band always on the same axis extreme | Confirms the region or drift is on that axis; read it together with the two rows above. |
+| One or more design layers at ~100%, the **same layers** at every radius | A region absent from the part: machined face, unprinted end, lattice past the scanned field. Systematic, and reportable as a finding. |
+| Layers hot but never reaching 100%, and the **hottest layer moves** between radii — often to a different axis | Misalignment or drift. Not defects. |
+| Dark count falls steeply with radius, spread over many components | Supports misalignment; read with the row above. |
 | `component_size` 1 and `dark_neighbor_count` 0, stable across radii | A stochastically missing junction. This is the reportable defect. |
-| Nothing hot, no components above size 1 | Clean at junction level. |
+| No layer above a few percent, no component above size 1 | Clean at junction level. |
 
-Both misalignment and a missing region raise the dark count and both fall as
-the radius grows, so the count alone does not separate them — a wide probe
-eventually finds material for a merely-displaced junction, but never for one
-sitting in air. **What separates them is whether the biggest lump survives.**
-Compute `dark_components.largest / n_candidates` at your widest radius: near 1
-means one contiguous absent region; well below means scattered near-misses.
+Measured on the reference scan against deliberately broken lattices — the
+darkest design layer at each radius:
 
-Measured on the reference scan with deliberately broken lattices:
+| Lattice | r=4 | r=8 | r=12 |
+|---|---|---|---|
+| Clean (machined face) | y=18, 100% | y=18, 94.5% | y=18, 2.2% |
+| Rotated 2° | x=18, 95.6% | x=18, 61.9% | **y=18**, 46.4% |
+| Phantom cell layer | x=19, 100.0% | x=19, 100.0% | x=19, 100.0% |
 
-| Lattice | r=4 | r=8 | r=12 | largest / candidates at r=12 |
-|---|---|---|---|---|
-| Rotated 2° | 716 dark, largest 392 | 288, largest 102 | 152, largest 73 | 0.48 |
-| Phantom cell layer | 841 dark, largest 537 | 553, largest 380 | 375, largest 369 | 0.98 |
+Three things to take from that table:
 
-The rotated lattice's largest component collapses 5.4x; the phantom layer's
-barely moves. A single radius could not have told them apart.
+- **The rotated lattice never reaches 100% and its worst layer changes axis**
+  between r=8 and r=12. A merely displaced junction has material nearby; a wide
+  enough probe finds it, and which layer looks worst is then an accident.
+- **The phantom slab does not move at all** — 180 of 180, at every radius. Its
+  junctions sit in air, so no radius can find material for them.
+- **A one-layer-thick absence still fades at a wide radius.** The real machined
+  face collapses from 100% to 2.2% at r=12 because the probe reaches the struts
+  behind it. So judge a layer at r=4 and r=8; do not use r=12 alone to dismiss
+  one. Depth, not authenticity, is what that collapse measures.
 
 ## Choosing the radius
 
@@ -129,10 +146,11 @@ Write `junction_scan_report.md` containing:
 - Inputs (volume, registered JSON, nominal JSON) and every parameter used.
 - **Alignment verdict: PASS / FAIL / UNCERTAIN**, with the overlay images cited
   as evidence.
-- Systematic findings, each with the statistic that shows it (which band, which
-  component size, how it moved with radius), and what you excluded as a result.
+- Systematic findings, each with the statistic that shows it (which design
+  layer, at what dark fraction, how it moved with radius), and what you excluded
+  as a result. Name every excluded layer explicitly.
 - The radius sweep as a small table: radius against dark count, candidate count,
-  and largest component.
+  largest component, and the darkest design layer.
 - Surviving candidates: junction id, x, y, z, intensity, degree, and whether you
   visually confirmed it.
 - Anything you could not determine. If a check could not be run, say so plainly
@@ -164,20 +182,26 @@ and that reasoning has already produced a wrong conclusion once.
   sampled node intensities. A node-fitted threshold lands inside the material
   mode and gets worse as exclusions improve.
 - **Coordinates**: JSON positions are `[x, y, z]`; the volume is indexed
-  `(z, y, x)`. Slice `axis` 0/1/2 means z/y/x.
-- **The machined-off bottom face** on the 9x9x9 specimens is the maximum-Y layer
-  of the *nominal* design. Registered coordinates are rotated, so it cannot be
-  found by thresholding registered y — this is why `exclude_bottom_face` needs
-  the nominal JSON.
+  `(z, y, x)`. Slice `axis` 0/1/2 means z/y/x. Design-layer names like `y=18`
+  are on the *design* grid and are not voxel coordinates.
+- **No defect is assumed.** Nothing in the tools knows that the 9x9x9 specimens
+  were machined on one face; that face is found, every run, by its design layer
+  reading 100% dark. A different specimen with a different systematic — or none
+  at all — is measured the same way. Do not carry a previous scan's exclusions
+  into a new one.
+- The per-junction CSV carries `design_x,design_y,design_z`, so you can group
+  by layer or check a candidate's neighbourhood without re-running the scan.
 - Registered JSON filenames in this dataset contain spaces; quote them.
 
 ### Reference result
 
 On `data/9x9x9_octet_lattice/9x9x9_octet_lattice.tif` with its registered JSON
-at radius 8: 3430 junctions merged from 10206 entries, degree 3–12, full-volume
-Otsu 40049, 173 dark. Of those, 171 form one component on the machined-off
-bottom face. Excluding it leaves exactly **2** candidates — junctions 513 at
-(141, 685, 499) and 2682 at (615, 682, 420), both degree 12, both size-1
-components with no dark neighbours. Human inspection of that stack confirms
-exactly 2 missing junctions. A run on this scan that reports a different number
-has a bug or a changed parameter, not a discovery.
+and `data/missing_struts/octet_truss_9x9x9.json` as nominal, at radius 8: 3430
+junctions merged from 10206 entries, degree 3–12, full-volume Otsu 40049, 173
+dark. Design layer `y=18` reads 171/181 dark and holds one component of 171 —
+the machined-off face, found from the statistic rather than assumed. Excluding
+it (`exclude_design_layers="y=max"`, 181 excluded) leaves exactly **2**
+candidates — junctions 513 at (141, 685, 499) and 2682 at (615, 682, 420), both
+degree 12, both size-1 components with no dark neighbours. Human inspection of
+that stack confirms exactly 2 missing junctions. A run on this scan that reports
+a different number has a bug or a changed parameter, not a discovery.

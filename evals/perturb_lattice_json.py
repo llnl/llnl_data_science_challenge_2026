@@ -27,8 +27,13 @@ Both outputs stay schema-valid: entry ids remain 0..N-1 in list order, struts
 reference existing entries, and co-located duplicates stay exactly coincident so
 ``merge_colocated_junctions`` still accepts them.
 
-A phantom-slab output has more entries than the nominal design, so it is
-incompatible with ``exclude_bottom_face`` -- run those evaluations without it.
+A scan reads the registered and nominal lattices together and requires them to
+describe the same entries, so a phantom slab has to be added to *both*: pass
+``--nominal-input``/``--nominal-output`` and the same slab is appended to the
+design file. There it lands on a fresh design layer one pitch beyond the part,
+which is precisely how a real unprinted or out-of-field region would present.
+Rotation does not change the entry list, so a rotated run keeps the original
+nominal file unchanged.
 """
 
 from __future__ import annotations
@@ -90,6 +95,11 @@ def rotate_junctions(data: dict, degrees: float, axis: str) -> dict:
     return data
 
 
+def _unique_mean(positions: np.ndarray) -> np.ndarray:
+    """Mean of the distinct positions, so duplicated entries do not vote twice."""
+    return np.unique(np.round(positions, 6), axis=0).mean(axis=0)
+
+
 def _entries_in_cells(data: dict, cells: list[dict]) -> set[int]:
     """Collect the junction entries touched by a set of unit cells' struts."""
     strut_by_id = {strut["id"]: strut for strut in data["struts"]}
@@ -139,8 +149,12 @@ def add_phantom_slab(data: dict, axis: str) -> dict:
     positions = np.array(
         [junction["position"] for junction in data["junctions"]], dtype=float
     )
-    shift = positions[outer_entries].mean(axis=0) - positions[inner_entries].mean(
-        axis=0
+    # Deduplicate by position before averaging. The two cell layers hold the same
+    # junctions one pitch apart, but not the same number of *entries* -- a
+    # junction is listed once per cell touching it, so boundary junctions appear
+    # fewer times and would drag an entry-weighted mean off the pitch.
+    shift = _unique_mean(positions[outer_entries]) - _unique_mean(
+        positions[inner_entries]
     )
 
     n_entries = len(data["junctions"])
@@ -205,22 +219,72 @@ def main() -> None:
         choices=sorted(AXES),
         help="append a phantom copy of the outermost face along this axis",
     )
+    parser.add_argument(
+        "--nominal-input",
+        type=Path,
+        default=None,
+        help="design JSON matching the input, required for --add-phantom-slab",
+    )
+    parser.add_argument(
+        "--nominal-output",
+        type=Path,
+        default=None,
+        help="destination for the perturbed design JSON",
+    )
     arguments = parser.parse_args()
 
     if arguments.rotate_degrees is None and arguments.add_phantom_slab is None:
         parser.error("choose at least one of --rotate-degrees or --add-phantom-slab")
+
+    nominal_given = arguments.nominal_input or arguments.nominal_output
+    if arguments.add_phantom_slab is not None:
+        # A scan reads both lattices and rejects a pair with different entry
+        # counts, so a slab added to only one of them would fail at load rather
+        # than exercise the detector.
+        if not (arguments.nominal_input and arguments.nominal_output):
+            parser.error(
+                "--add-phantom-slab needs --nominal-input and --nominal-output: the "
+                "slab must be added to the design lattice too, or the two files no "
+                "longer describe the same entries"
+            )
+    elif nominal_given:
+        parser.error(
+            "--nominal-input/--nominal-output apply only to --add-phantom-slab; "
+            "rotation leaves the entry list alone, so the original design JSON "
+            "still matches"
+        )
 
     data = load_lattice_json(arguments.input)
     if arguments.rotate_degrees is not None:
         data = rotate_junctions(data, arguments.rotate_degrees, arguments.rotate_axis)
     if arguments.add_phantom_slab is not None:
         data = add_phantom_slab(data, arguments.add_phantom_slab)
+    _write_lattice(arguments.output, data)
 
-    arguments.output.parent.mkdir(parents=True, exist_ok=True)
-    with arguments.output.open("w") as f:
+    if arguments.nominal_input is not None:
+        # The same slab, selected the same way from the same unit-cell grid, so
+        # the two files gain the same entries in the same order. The shift is
+        # measured in each file's own coordinates, which puts the design copy on
+        # a clean new design layer.
+        nominal = add_phantom_slab(
+            load_lattice_json(arguments.nominal_input), arguments.add_phantom_slab
+        )
+        if len(nominal["junctions"]) != len(data["junctions"]):
+            raise ValueError(
+                f"{arguments.nominal_input} and {arguments.input} produced "
+                f"{len(nominal['junctions'])} and {len(data['junctions'])} entries; "
+                "they are not the same lattice"
+            )
+        _write_lattice(arguments.nominal_output, nominal)
+
+
+def _write_lattice(path: Path, data: dict) -> None:
+    """Write a lattice JSON, creating its directory."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
         json.dump(data, f)
     print(
-        f"Wrote {arguments.output} with {len(data['junctions'])} junction entries "
+        f"Wrote {path} with {len(data['junctions'])} junction entries "
         f"and {len(data['struts'])} struts"
     )
 

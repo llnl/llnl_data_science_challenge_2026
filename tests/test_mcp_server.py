@@ -197,6 +197,7 @@ def test_scan_lattice_junctions_reports_the_dark_junction(
     result = mcp_server.scan_lattice_junctions(
         str(synthetic_lattice.volume_path),
         str(synthetic_lattice.registered_json_path),
+        str(synthetic_lattice.nominal_json_path),
         str(output_dir),
         radius=8,
     )
@@ -205,6 +206,9 @@ def test_scan_lattice_junctions_reports_the_dark_junction(
     assert "27 junctions (merged from 54 JSON entries, degree 3-6)" in result
     assert "1 candidates of 27 scored" in result
     assert "Largest dark component: 1 junction(s) across 1 component(s)." in result
+    # The design-layer line is how a whole missing face announces itself; with
+    # one interior junction dark, the worst layer is one of the three it sits on.
+    assert "Darkest design layer: " in result
 
     csv_path = output_dir / "junction_scan_r8.csv"
     summary_path = output_dir / "junction_scan_r8_summary.json"
@@ -224,6 +228,7 @@ def test_scan_lattice_junctions_accepts_a_tiff_volume(
     result = mcp_server.scan_lattice_junctions(
         str(tiff_path),
         str(synthetic_lattice.registered_json_path),
+        str(synthetic_lattice.nominal_json_path),
         str(tmp_path / "scan"),
     )
     assert "1 candidates of 27 scored" in result
@@ -238,6 +243,7 @@ def test_scan_lattice_junctions_tags_outputs_by_radius(
         mcp_server.scan_lattice_junctions(
             str(synthetic_lattice.volume_path),
             str(synthetic_lattice.registered_json_path),
+            str(synthetic_lattice.nominal_json_path),
             str(output_dir),
             radius=radius,
         )
@@ -248,15 +254,15 @@ def test_scan_lattice_junctions_tags_outputs_by_radius(
     }
 
 
-def test_scan_lattice_junctions_excludes_the_bottom_face(
+def test_scan_lattice_junctions_excludes_a_named_design_layer(
     synthetic_lattice, tmp_path: Path
 ) -> None:
     result = mcp_server.scan_lattice_junctions(
         str(synthetic_lattice.volume_path),
         str(synthetic_lattice.registered_json_path),
+        str(synthetic_lattice.nominal_json_path),
         str(tmp_path / "scan"),
-        nominal_json_path=str(synthetic_lattice.nominal_json_path),
-        exclude_bottom_face=True,
+        exclude_design_layers="y=max",
     )
     assert "9 excluded" in result
     assert "1 candidates of 18 scored" in result
@@ -269,6 +275,7 @@ def test_scan_lattice_junctions_writes_a_marked_tiff(
     result = mcp_server.scan_lattice_junctions(
         str(synthetic_lattice.volume_path),
         str(synthetic_lattice.registered_json_path),
+        str(synthetic_lattice.nominal_json_path),
         str(output_dir),
         radius=3,
         write_marked_tiff=True,
@@ -287,6 +294,7 @@ def test_visualize_junction_overlay_renders(
     result = mcp_server.visualize_junction_overlay(
         str(synthetic_lattice.volume_path),
         str(synthetic_lattice.registered_json_path),
+        str(synthetic_lattice.nominal_json_path),
         str(output_path),
         mode=mode,
     )
@@ -302,6 +310,7 @@ def test_visualize_junction_overlay_defaults_to_the_median_slice(
     result = mcp_server.visualize_junction_overlay(
         str(synthetic_lattice.volume_path),
         str(synthetic_lattice.registered_json_path),
+        str(synthetic_lattice.nominal_json_path),
         str(tmp_path / "overlay.png"),
         slice_index=-1,
     )
@@ -316,8 +325,11 @@ def test_visualize_junction_overlay_defaults_to_the_median_slice(
         ({"volume_path": "volume.txt"}, "volume file must have a .npy"),
         ({"registered_json_path": "missing.json"}, "registered_json_path not found"),
         ({"registered_json_path": "lattice.txt"}, "must have a .json extension"),
+        ({"nominal_json_path": "missing.json"}, "nominal_json_path not found"),
+        ({"nominal_json_path": "lattice.txt"}, "must have a .json extension"),
         ({"radius": 0}, "radius must be a positive"),
-        ({"exclude_bottom_face": True}, "requires nominal_json_path"),
+        ({"exclude_design_layers": "y=7"}, "no design layer at y=7"),
+        ({"exclude_design_layers": "w=max"}, "must look like"),
         ({"exclude_junction_ids": "99999"}, "exclude_junction_ids must lie in"),
     ],
 )
@@ -330,6 +342,7 @@ def test_scan_lattice_junctions_errors(
     arguments = {
         "volume_path": str(synthetic_lattice.volume_path),
         "registered_json_path": str(synthetic_lattice.registered_json_path),
+        "nominal_json_path": str(synthetic_lattice.nominal_json_path),
         "output_dir": str(tmp_path / "scan"),
         **{
             key: str(tmp_path / value) if key in path_keys else value
@@ -356,6 +369,7 @@ def test_visualize_junction_overlay_errors(
     result = mcp_server.visualize_junction_overlay(
         str(synthetic_lattice.volume_path),
         str(synthetic_lattice.registered_json_path),
+        str(synthetic_lattice.nominal_json_path),
         str(tmp_path / "overlay.png"),
         **keyword,
     )

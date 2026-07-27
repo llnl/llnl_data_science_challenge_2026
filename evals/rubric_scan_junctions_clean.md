@@ -14,8 +14,9 @@ Ground truth for this specimen, from human visual inspection of the stack:
 - The lattice **is** correctly registered to this scan.
 - The specimen's bottom face was **machined off after printing**, so the design's
   last junction row has no material. That is a real, systematic property of the
-  part and must be reported, not silently dropped. At radius 8 it accounts for
-  171 of 173 dark junctions, in one connected component.
+  part and must be reported, not silently dropped. It is design layer `y=18`,
+  which at radius 8 reads 171 of 181 junctions dark and accounts for 171 of the
+  scan's 173 dark junctions, in one connected component.
 - After excluding it, exactly **2** junctions are missing: ids **513** at
   (141, 685, 499) and **2682** at (615, 682, 420), both degree 12, both
   isolated (component size 1, no dark neighbours).
@@ -24,9 +25,12 @@ Score the report using the following criteria:
 
 1. **Alignment:** Does it reach a PASS verdict on alignment, supported by
    overlay evidence rather than asserted?
-2. **Systematic finding:** Does it identify and report the machined-off bottom
-   face as a systematic absence, with the statistic that shows it (one large
-   component, concentrated in the extreme y band)?
+2. **Systematic finding:** Does it identify and report the machined-off face as
+   a systematic absence, with the statistic that shows it — design layer `y=18`
+   at ~100% dark, forming one large component — and name the layer it excluded?
+   Finding the face from the scan's own statistics is what is being tested; a
+   report that excludes it because this specimen is known to be machined has not
+   demonstrated the check.
 3. **Defect list:** Does it end with exactly the 2 candidates above, correctly
    identified, with no false positives and none missed?
 4. **Discipline:** Does it record the parameters used, confirm candidates

@@ -28,6 +28,12 @@ for the full challenge description.
       MCP tools, and the `scan-junctions` skill. The skill runs alignment and
       systematic checks *before* reporting stochastic candidates, and treats the
       sampling radius as its one free parameter.
+- [x] Phase 2b — the tools carry **no specimen-specific defect knowledge**. Both
+      require the nominal design JSON and report a dark fraction per *design
+      layer* on each axis; a caller drops a region it has established is absent
+      from the part by naming it (`exclude_design_layers="y=max"`). This
+      replaced an `exclude_bottom_face` flag that hardcoded this one specimen's
+      machining artifact — the other eight scans will not share it.
 
 **Current focus is missing junctions, not missing struts.** The strut detector
 works and its findings are recorded below, but validating it is parked.
@@ -72,8 +78,12 @@ expected defect counts from independent-removal probabilities.
    answered for a fragment. `merge_colocated_junctions()` in
    `overlay_registered_nodes_histogram.py` merges by position; `load_lattice()`
    routes through it and returns the entry→junction map, which is what carries a
-   per-entry property (the nominal design's y) onto the merged lattice. Struts
-   are not duplicated, so merging leaves strut-level results untouched.
+   per-entry property (the nominal design's coordinates) onto the merged
+   lattice. Struts are not duplicated, so merging leaves strut-level results
+   untouched. `design_positions()` in `junction_scan.py` does that scatter and
+   checks it: entries merged into one junction must agree on their design
+   position, which is what catches a registered/nominal pair that are not the
+   same lattice.
 
 2. **Cut node intensities against the volume's Otsu, never their own.** Otsu
    maximizes `w0·w1·(m0−m1)²`, which assumes comparably sized classes. A few
@@ -93,8 +103,30 @@ expected defect counts from independent-removal probabilities.
    flags nothing. Unlike struts, a junction can tolerate a wide probe: the
    nearest distinct junction is 55.8 voxels away.
 
+4. **Per-design-layer dark fraction is what separates a systematic absence from
+   misalignment**, and it generalizes where the connected-component ratio did
+   not. Measured on the reference volume against three lattices — the darkest
+   design layer at radius 4 / 8 / 12:
+
+   | Lattice | r=4 | r=8 | r=12 |
+   |---|---|---|---|
+   | Clean (machined face) | y=18, 100% | y=18, 94.5% | y=18, 2.2% |
+   | Rotated 2° about z | x=18, 95.6% | x=18, 61.9% | **y=18**, 46.4% |
+   | Phantom cell layer | x=19, 100.0% | x=19, 100.0% | x=19, 100.0% |
+
+   A misaligned lattice never reaches 100% and its worst layer *changes axis*
+   between radii, because a displaced junction has material nearby and a wide
+   probe eventually finds it. Junctions sitting in air never recover at any
+   radius. Note the caveat in the top row: a one-layer-thick real absence still
+   fades at r=12, because the probe reaches the struts behind it — so judge a
+   layer at r=4 and r=8, and do not use r=12 alone to dismiss one. An earlier
+   version of this rule used `dark_components.largest / n_candidates` and was
+   much weaker (0.48 vs 0.98); the design-layer statistic replaced it.
+
 Plus the machined-off bottom face, which is shared with the strut analysis and
-described as strut finding 1.
+described as strut finding 1. It is no longer special-cased anywhere: the
+junction tools rediscover it every run as design layer `y=18` reading ~100%
+dark, and it is dropped by name via `exclude_design_layers="y=max"`.
 
 ## Missing struts — working, unvalidated, parked
 

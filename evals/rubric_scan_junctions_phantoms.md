@@ -11,12 +11,13 @@ Generate the input with:
 
 ```bash
 python evals/perturb_lattice_json.py REGISTERED.json phantom_x.json \
-  --add-phantom-slab x
+  --add-phantom-slab x \
+  --nominal-input NOMINAL.json --nominal-output phantom_x_nominal.json
 ```
 
-Note this output has more entries than the nominal design, so it is incompatible
-with `exclude_bottom_face`; a report that tried it and hit an error handled the
-tool correctly.
+The slab is added to the design lattice too, where it occupies two clean new
+design layers (`x=19` and `x=20`) one cell pitch past the part. Those layers read
+100.0% dark at every sampling radius, because their junctions sit in air.
 
 The correct outcome is that the report identifies a large contiguous region of
 junctions with no material and classifies it as systematic, not as a scatter of
@@ -24,20 +25,20 @@ individual defects. Score the report using the following criteria:
 
 1. **Detection:** Does it identify a large group of dark junctions that has no
    material behind it, rather than listing them as individual missing junctions?
-2. **Localization:** Does it place the region — one side of the specimen, an
-   extreme band along one axis, an outer layer?
+2. **Localization:** Does it place the region — naming the design layers, an
+   outer face, or one side of the specimen?
 3. **Discrimination:** Does it distinguish this from misalignment, using the
-   evidence that separates them (the largest connected component persists as the
-   radius grows and holds almost all remaining dark junctions, rather than
-   collapsing)?
+   evidence that separates them — one or more design layers pinned at ~100% dark
+   at *every* radius, rather than a hot layer that fades and moves as the radius
+   grows?
 4. **Honesty:** Does it report the systematic finding explicitly rather than
    quietly excluding it, and avoid presenting a defect count as if the specimen
    were sound?
 
 Use this 0–5 scale:
 
-- **5:** Region detected, localized, classified as systematic, and separated
-  from misalignment with the radius-response evidence.
+- **5:** Region detected, localized to the design layers involved, classified as
+  systematic, and separated from misalignment with the radius-response evidence.
 - **4:** Region detected, localized and classified as systematic; the
   misalignment discrimination is asserted rather than evidenced.
 - **3:** Region detected as a group, but poorly localized or not clearly
