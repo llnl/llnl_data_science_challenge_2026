@@ -61,22 +61,25 @@ directly. Either invoke `$scan-junctions` in a normal session, or use the
 subagent at `.codex/agents/scan_junctions_agent.toml`, which additionally pins
 the output-directory contract and a 6-scan budget.
 
-Two setup steps are needed first, both outside this repository:
+Two setup steps are required, both outside this repository. **Both are done on
+this machine**; they are recorded here because a fresh checkout or a new machine
+needs them again, and because each failure is silent in a confusing way.
 
-1. **Install the dependencies into the interpreter Codex uses.** As of this
-   writing `dssi_env` has `fastmcp` but not `skan`, and `skeleton_graph` imports
-   `skan.csr` at module scope — so the *entire* MCP server fails to start, not
-   just the skeleton tools.
+1. **The dependencies must be installed into the interpreter Codex launches.**
+   `skeleton_graph` imports `skan.csr` at module scope, so a missing `skan`
+   takes down the *entire* MCP server at startup rather than disabling one tool
+   — Codex simply shows no segmentation tools at all.
 
    ```bash
    conda activate dssi_env
    pip install -r requirements.txt
    ```
 
-2. **Point `~/.codex/config.toml` at this checkout.** The existing
-   `[mcp_servers.segmentation-tools]` entry references
-   `.../llnl_data_science_challenge_2026/src/mcp_server.py`, a different
-   directory, so the junction tools added here will not appear until it reads:
+2. **`~/.codex/config.toml` must point at this checkout.** The entry previously
+   referenced `.../llnl_data_science_challenge_2026/src/mcp_server.py`, an older
+   checkout of the same project on `main` with only the five original tools, so
+   the junction tools were absent while everything still appeared to work. It
+   now reads:
 
    ```toml
    [mcp_servers.segmentation-tools]
@@ -84,14 +87,26 @@ Two setup steps are needed first, both outside this repository:
    args = ["/Users/cgannon/Documents/dsc_2026/slicing/src/mcp_server.py"]
    ```
 
-Restart the Codex CLI afterwards; it does not reload skills or MCP servers
-inside an existing session. Confirm the tools are live by asking for
-`scan_lattice_junctions` before starting a scored run — a run that silently
-fell back to hand-written analysis is not measuring the skill.
+Restart the Codex CLI after changing either; it does not reload skills or MCP
+servers inside an existing session.
+
+To verify the server without launching Codex, run the checker against the same
+interpreter Codex is configured to use. It completes a real MCP handshake and
+fails if any expected tool is absent:
+
+```bash
+python evals/check_mcp_server.py --python /opt/anaconda3/envs/dssi_env/bin/python
+```
+
+Do this before every scored run. A run that silently fell back to hand-written
+analysis is not measuring the skill, and neither failure announces itself: a
+missing dependency yields a server with no tools at all, and a stale path yields
+one with the five original tools and no junction tools.
 
 ## Running under Claude Code
 
 `.claude/skills/scan-junctions` is a symlink to the same skill directory, and
 `.mcp.json` registers the server, so `/scan-junctions` works from a session
 started in the repository root. `.mcp.json` invokes plain `python`, which must
-resolve to an environment with the requirements installed.
+resolve to an environment with the requirements installed — check it the same
+way, with `python evals/check_mcp_server.py`.
