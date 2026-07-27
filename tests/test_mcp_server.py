@@ -1,5 +1,6 @@
-from pathlib import Path
+import json
 import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -187,3 +188,176 @@ def test_invalid_or_malformed_npy_paths_return_errors(tmp_path: Path) -> None:
 
     assert "input file must have a .npy extension" in extension_result
     assert malformed_result.startswith("Error segmenting CT dataset:")
+
+
+def test_scan_lattice_junctions_reports_the_dark_junction(
+    synthetic_lattice, tmp_path: Path
+) -> None:
+    output_dir = tmp_path / "scan"
+    result = mcp_server.scan_lattice_junctions(
+        str(synthetic_lattice.volume_path),
+        str(synthetic_lattice.registered_json_path),
+        str(output_dir),
+        radius=8,
+    )
+
+    assert "Error" not in result
+    assert "27 junctions (merged from 54 JSON entries, degree 3-6)" in result
+    assert "1 candidates of 27 scored" in result
+    assert "Largest dark component: 1 junction(s) across 1 component(s)." in result
+
+    csv_path = output_dir / "junction_scan_r8.csv"
+    summary_path = output_dir / "junction_scan_r8_summary.json"
+    assert str(csv_path) in result and str(summary_path) in result
+
+    summary = json.loads(summary_path.read_text())
+    assert summary["n_candidates"] == 1
+    assert len(csv_path.read_text().splitlines()) == 28
+
+
+def test_scan_lattice_junctions_accepts_a_tiff_volume(
+    synthetic_lattice, tmp_path: Path
+) -> None:
+    tiff_path = tmp_path / "volume.tif"
+    tifffile.imwrite(tiff_path, synthetic_lattice.volume)
+
+    result = mcp_server.scan_lattice_junctions(
+        str(tiff_path),
+        str(synthetic_lattice.registered_json_path),
+        str(tmp_path / "scan"),
+    )
+    assert "1 candidates of 27 scored" in result
+
+
+def test_scan_lattice_junctions_tags_outputs_by_radius(
+    synthetic_lattice, tmp_path: Path
+) -> None:
+    """A radius sweep must not overwrite its own earlier passes."""
+    output_dir = tmp_path / "scan"
+    for radius in (4, 8):
+        mcp_server.scan_lattice_junctions(
+            str(synthetic_lattice.volume_path),
+            str(synthetic_lattice.registered_json_path),
+            str(output_dir),
+            radius=radius,
+        )
+
+    assert {path.name for path in output_dir.glob("*.csv")} == {
+        "junction_scan_r4.csv",
+        "junction_scan_r8.csv",
+    }
+
+
+def test_scan_lattice_junctions_excludes_the_bottom_face(
+    synthetic_lattice, tmp_path: Path
+) -> None:
+    result = mcp_server.scan_lattice_junctions(
+        str(synthetic_lattice.volume_path),
+        str(synthetic_lattice.registered_json_path),
+        str(tmp_path / "scan"),
+        nominal_json_path=str(synthetic_lattice.nominal_json_path),
+        exclude_bottom_face=True,
+    )
+    assert "9 excluded" in result
+    assert "1 candidates of 18 scored" in result
+
+
+def test_scan_lattice_junctions_writes_a_marked_tiff(
+    synthetic_lattice, tmp_path: Path
+) -> None:
+    output_dir = tmp_path / "scan"
+    result = mcp_server.scan_lattice_junctions(
+        str(synthetic_lattice.volume_path),
+        str(synthetic_lattice.registered_json_path),
+        str(output_dir),
+        radius=3,
+        write_marked_tiff=True,
+    )
+
+    marked_path = output_dir / "junction_scan_r3_marked.tif"
+    assert str(marked_path) in result
+    assert tifffile.imread(marked_path).shape == synthetic_lattice.volume.shape + (3,)
+
+
+@pytest.mark.parametrize("mode", ["slice", "mip"])
+def test_visualize_junction_overlay_renders(
+    synthetic_lattice, tmp_path: Path, mode: str
+) -> None:
+    output_path = tmp_path / f"overlay_{mode}.png"
+    result = mcp_server.visualize_junction_overlay(
+        str(synthetic_lattice.volume_path),
+        str(synthetic_lattice.registered_json_path),
+        str(output_path),
+        mode=mode,
+    )
+
+    assert result.startswith(f"Junction overlay saved to {output_path}")
+    assert "1 candidates of 27 junctions" in result
+    assert output_path.stat().st_size > 0
+
+
+def test_visualize_junction_overlay_defaults_to_the_median_slice(
+    synthetic_lattice, tmp_path: Path
+) -> None:
+    result = mcp_server.visualize_junction_overlay(
+        str(synthetic_lattice.volume_path),
+        str(synthetic_lattice.registered_json_path),
+        str(tmp_path / "overlay.png"),
+        slice_index=-1,
+    )
+    # Junctions sit at z = 10, 24, 38, so the median is the middle layer.
+    assert "slice z=24" in result
+
+
+@pytest.mark.parametrize(
+    ("keyword", "message"),
+    [
+        ({"volume_path": "missing.npy"}, "volume file not found"),
+        ({"volume_path": "volume.txt"}, "volume file must have a .npy"),
+        ({"registered_json_path": "missing.json"}, "registered_json_path not found"),
+        ({"registered_json_path": "lattice.txt"}, "must have a .json extension"),
+        ({"radius": 0}, "radius must be a positive"),
+        ({"exclude_bottom_face": True}, "requires nominal_json_path"),
+        ({"exclude_junction_ids": "99999"}, "exclude_junction_ids must lie in"),
+    ],
+)
+def test_scan_lattice_junctions_errors(
+    synthetic_lattice, tmp_path: Path, keyword: dict, message: str
+) -> None:
+    (tmp_path / "volume.txt").write_text("not an array")
+    (tmp_path / "lattice.txt").write_text("not a lattice")
+    path_keys = {"volume_path", "registered_json_path", "nominal_json_path"}
+    arguments = {
+        "volume_path": str(synthetic_lattice.volume_path),
+        "registered_json_path": str(synthetic_lattice.registered_json_path),
+        "output_dir": str(tmp_path / "scan"),
+        **{
+            key: str(tmp_path / value) if key in path_keys else value
+            for key, value in keyword.items()
+        },
+    }
+
+    result = mcp_server.scan_lattice_junctions(**arguments)
+    assert result.startswith("Error scanning lattice junctions:")
+    assert message in result
+
+
+@pytest.mark.parametrize(
+    ("keyword", "message"),
+    [
+        ({"mode": "projection"}, 'mode must be "slice" or "mip"'),
+        ({"axis": 3}, "axis must be 0, 1, or 2"),
+        ({"slice_index": 9999}, "index must be between"),
+    ],
+)
+def test_visualize_junction_overlay_errors(
+    synthetic_lattice, tmp_path: Path, keyword: dict, message: str
+) -> None:
+    result = mcp_server.visualize_junction_overlay(
+        str(synthetic_lattice.volume_path),
+        str(synthetic_lattice.registered_json_path),
+        str(tmp_path / "overlay.png"),
+        **keyword,
+    )
+    assert result.startswith("Error visualizing junction overlay:")
+    assert message in result

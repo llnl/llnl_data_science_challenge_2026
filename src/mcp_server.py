@@ -1,9 +1,11 @@
+import json
 import math
 import os
 import tempfile
 from pathlib import Path
 
 import numpy as np
+import tifffile
 from fastmcp import FastMCP
 
 from skeleton_graph import create_skeleton_graph
@@ -20,6 +22,18 @@ import matplotlib
 
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt
+
+# Imported after the Agg block: junction_scan pulls in pyplot transitively, and
+# a default backend selected first could try to reach a display.
+from junction_scan import (
+    parse_junction_ids,
+    save_marked_tiff,
+    save_mip_overlay_with_status,
+    save_slice_overlay_with_radius,
+    scan_junctions,
+    summarize_scan,
+    write_junction_csv,
+)
 
 # Initialize the MCP server
 mcp = FastMCP("CT Segmentation")
@@ -168,6 +182,272 @@ def graph_skeleton(
         )
     except Exception as exc:
         return f"Error creating skeleton graph: {exc}"
+
+
+@mcp.tool()
+def scan_lattice_junctions(
+    volume_path: str,
+    registered_json_path: str,
+    output_dir: str,
+    radius: int = 8,
+    nominal_json_path: str = "",
+    exclude_bottom_face: bool = False,
+    exclude_junction_ids: str = "",
+    write_marked_tiff: bool = False,
+) -> str:
+    """Score every lattice junction against a CT volume and report the dark ones.
+
+    Merges the JSON's co-located junction entries, samples the brightest voxel
+    within ``radius`` of each merged position, and flags junctions falling below
+    the full-volume Otsu threshold. Writes a per-junction CSV and a summary JSON
+    carrying the spatial statistics needed to tell misregistration from a
+    missing region from genuinely absent junctions.
+
+    A junction reads dark only when *every* incident strut is absent, so a clean
+    result here does not mean the specimen has no missing struts.
+
+    Args:
+        volume_path: Existing 3D CT volume as ``.npy``, ``.tif``, or ``.tiff``.
+        registered_json_path: Lattice JSON registered to this volume's voxel
+            coordinates. Nominal or raw design JSONs are not aligned and will
+            flag nearly everything.
+        output_dir: Directory for the CSV and summary JSON. Both filenames carry
+            the radius, so repeated calls at different radii do not overwrite.
+        radius: Sampling sphere radius in voxels. This absorbs residual
+            registration drift; 8 is the validated starting point for the 9x9x9
+            octet specimens.
+        nominal_json_path: Nominal design JSON, required only when
+            ``exclude_bottom_face`` is set.
+        exclude_bottom_face: Exclude the machined-off bottom face, the maximum-Y
+            layer of the nominal design. Excluded junctions are still scored and
+            counted, just kept out of the candidate list.
+        exclude_junction_ids: Additional merged junction ids to exclude, comma-
+            or space-separated.
+        write_marked_tiff: Also write an RGB TIFF with candidates painted. Costs
+            roughly three bytes per input voxel in memory and on disk.
+
+    Returns:
+        A status message with the counts, the strongest spatial signals, the
+        candidate ids, and the output paths, or an error message.
+    """
+    try:
+        volume_input = _validate_volume_input(volume_path)
+        registered_path = _validate_json_input(registered_json_path, "registered_json_path")
+        nominal_path = (
+            _validate_json_input(nominal_json_path, "nominal_json_path")
+            if nominal_json_path
+            else None
+        )
+        output_directory = Path(output_dir).expanduser()
+
+        volume = _load_volume(volume_input)
+        result = scan_junctions(
+            volume,
+            registered_path,
+            radius=radius,
+            nominal_json_path=nominal_path,
+            exclude_bottom_face=exclude_bottom_face,
+            exclude_junction_ids=parse_junction_ids(exclude_junction_ids),
+        )
+        summary = summarize_scan(result)
+
+        output_directory.mkdir(parents=True, exist_ok=True)
+        csv_path = write_junction_csv(
+            output_directory / f"junction_scan_r{result.radius}.csv", result
+        )
+        summary_path = output_directory / f"junction_scan_r{result.radius}_summary.json"
+        summary_path.write_text(json.dumps(summary, indent=2))
+
+        lines = [
+            f"Scanned {registered_path.name} against {volume_input.name} at radius "
+            f"{result.radius}.",
+            f"{summary['n_junctions']} junctions (merged from {summary['n_entries']} "
+            f"JSON entries, degree {summary['degree_min']}-{summary['degree_max']}); "
+            f"full-volume Otsu threshold {summary['otsu_threshold']:.0f}.",
+            f"{summary['n_dark']} dark, {summary['n_excluded']} excluded, "
+            f"{summary['n_candidates']} candidates of {summary['n_scored']} scored "
+            f"({_format_fraction(summary['candidate_fraction'])}).",
+            f"Largest dark component: {summary['dark_components']['largest']} "
+            f"junction(s) across {summary['dark_components']['n_components']} "
+            f"component(s).",
+            _describe_worst_band(summary),
+            _describe_candidates(summary),
+        ]
+
+        if write_marked_tiff:
+            tiff_path = save_marked_tiff(
+                volume,
+                result,
+                output_directory / f"junction_scan_r{result.radius}_marked.tif",
+            )
+            lines.append(f"Marked TIFF: {tiff_path}.")
+        lines.append(f"Per-junction CSV: {csv_path}; summary JSON: {summary_path}.")
+        return " ".join(lines)
+    except Exception as exc:
+        return f"Error scanning lattice junctions: {exc}"
+
+
+@mcp.tool()
+def visualize_junction_overlay(
+    volume_path: str,
+    registered_json_path: str,
+    output_path: str,
+    mode: str = "slice",
+    axis: int = 0,
+    slice_index: int = -1,
+    radius: int = 8,
+    nominal_json_path: str = "",
+    exclude_bottom_face: bool = False,
+) -> str:
+    """Render the lattice over the CT volume, colored by junction status.
+
+    Use ``mode="mip"`` first to judge coarse alignment: if the junction markers
+    do not sit on the projected lattice, the JSON does not belong to this scan
+    and no per-junction number derived from it means anything. Use
+    ``mode="slice"`` to inspect a specific candidate, where each junction's
+    sampling sphere is drawn to scale as its cross-section in that plane, so the
+    picture shows exactly the voxels a flag was computed from.
+
+    Junctions are green when bright, red when flagged, and orange when dark but
+    excluded.
+
+    Args:
+        volume_path: Existing 3D CT volume as ``.npy``, ``.tif``, or ``.tiff``.
+        registered_json_path: Lattice JSON registered to this volume.
+        output_path: Destination image; the suffix picks the format (e.g. .png).
+        mode: ``"slice"`` for a single plane, ``"mip"`` for a maximum-intensity
+            projection along ``axis``.
+        axis: Volume axis to slice or project along (0 = z, 1 = y, 2 = x).
+        slice_index: Slice index for ``mode="slice"``; -1 selects the median
+            junction coordinate along ``axis``. Ignored for ``mode="mip"``.
+        radius: Sampling sphere radius in voxels, matching the scan being checked.
+        nominal_json_path: Nominal design JSON, required only when
+            ``exclude_bottom_face`` is set.
+        exclude_bottom_face: Color the machined-off bottom face as excluded
+            rather than as candidates.
+
+    Returns:
+        A status message with the saved image location, or an error message.
+    """
+    try:
+        if mode not in ("slice", "mip"):
+            raise ValueError(f'mode must be "slice" or "mip", got {mode!r}')
+
+        volume_input = _validate_volume_input(volume_path)
+        registered_path = _validate_json_input(registered_json_path, "registered_json_path")
+        nominal_path = (
+            _validate_json_input(nominal_json_path, "nominal_json_path")
+            if nominal_json_path
+            else None
+        )
+        destination = Path(output_path).expanduser()
+
+        volume = _load_volume(volume_input)
+        result = scan_junctions(
+            volume,
+            registered_path,
+            radius=radius,
+            nominal_json_path=nominal_path,
+            exclude_bottom_face=exclude_bottom_face,
+        )
+
+        if mode == "mip":
+            save_mip_overlay_with_status(volume, result, destination, axis=axis)
+            return (
+                f"Junction overlay saved to {destination} "
+                f"({'zyx'[axis]} max-intensity projection, radius {result.radius}, "
+                f"{int(result.candidate.sum())} candidates of {result.n_junctions} "
+                f"junctions)"
+            )
+
+        index = save_slice_overlay_with_radius(
+            volume,
+            result,
+            destination,
+            axis=axis,
+            index=None if slice_index < 0 else slice_index,
+        )
+        return (
+            f"Junction overlay saved to {destination} (slice {'zyx'[axis]}={index}, "
+            f"radius {result.radius}, {int(result.candidate.sum())} candidates of "
+            f"{result.n_junctions} junctions)"
+        )
+    except Exception as exc:
+        return f"Error visualizing junction overlay: {exc}"
+
+
+def _format_fraction(fraction: float | None) -> str:
+    """Render an optional fraction as a percentage, or "n/a" when undefined."""
+    return "n/a" if fraction is None else f"{fraction:.2%}"
+
+
+def _describe_worst_band(summary: dict) -> str:
+    """Name the single band with the highest dark fraction across all three axes.
+
+    A dark set concentrated in one band is the cheapest systematic signal there
+    is: drift shows up as a gradient along one axis, a missing region as one hot
+    band, and stochastic absence as no band standing out at all.
+    """
+    ranked = [
+        (band["dark_fraction"], name, band)
+        for name, bands in summary["dark_fraction_by_band"].items()
+        for band in bands
+        if band["dark_fraction"] is not None
+    ]
+    if not ranked:
+        return "No scored junctions to band."
+    fraction, name, band = max(ranked, key=lambda item: item[0])
+    return (
+        f"Highest dark fraction in any band: {fraction:.2%} "
+        f"({name} {band['lo']:.0f}-{band['hi']:.0f}, {band['n_dark']}/"
+        f"{band['n_scored']})."
+    )
+
+
+CANDIDATE_ID_LIMIT = 20
+
+
+def _describe_candidates(summary: dict) -> str:
+    """List candidate ids, truncating to keep the status message readable."""
+    ids = [candidate["junction_id"] for candidate in summary["candidates"]]
+    if not ids:
+        return "No candidate junctions."
+    if len(ids) > CANDIDATE_ID_LIMIT:
+        shown = ", ".join(str(i) for i in ids[:CANDIDATE_ID_LIMIT])
+        return f"First {CANDIDATE_ID_LIMIT} candidate ids: {shown} (see CSV for all)."
+    return f"Candidate junction ids: {', '.join(str(i) for i in ids)}."
+
+
+def _validate_json_input(filepath: str, parameter: str) -> Path:
+    """Return a validated path to an existing JSON lattice description."""
+    path = Path(filepath).expanduser()
+    if path.suffix.lower() != ".json":
+        raise ValueError(f"{parameter} must have a .json extension: {path}")
+    if not path.is_file():
+        raise FileNotFoundError(f"{parameter} not found: {path}")
+    return path
+
+
+def _validate_volume_input(filepath: str) -> Path:
+    """Return a validated path to an existing NumPy or TIFF volume."""
+    path = Path(filepath).expanduser()
+    if path.suffix.lower() not in {".npy", ".tif", ".tiff"}:
+        raise ValueError(
+            f"volume file must have a .npy, .tif, or .tiff extension: {path}"
+        )
+    if not path.is_file():
+        raise FileNotFoundError(f"volume file not found: {path}")
+    return path
+
+
+def _load_volume(path: Path) -> np.ndarray:
+    """Read a validated volume path as a 3D array, from NumPy or TIFF."""
+    if path.suffix.lower() == ".npy":
+        volume = np.load(path, allow_pickle=False)
+    else:
+        volume = tifffile.imread(path)
+    _validate_3d_array(volume, path)
+    return volume
 
 
 def _validate_npy_input(filepath: str) -> Path:
