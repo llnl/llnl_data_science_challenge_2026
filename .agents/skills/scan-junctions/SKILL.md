@@ -79,14 +79,28 @@ Read these from the summary JSON: `dark_fraction_by_band`,
 
 | Signal | Reading |
 |---|---|
-| High dark fraction nearly everywhere, falling sharply as radius grows | Misalignment or heavy drift. Not defects. |
-| Dark fraction climbing monotonically along one axis, radius-sensitive | Residual registration drift on that axis (a scale error). Raise the radius or refit the registration. |
-| One band or octant far hotter than the rest, **stable** across radii, with a large `dark_components.largest` | A missing region: a machined face, an unprinted corner, or lattice extending past the scan. Systematic. |
+| Dark count **and** `dark_components.largest` both fall steeply with radius, darkness spread over many components | Misalignment or drift. Not defects. |
+| Dark count falls with radius but one component **persists** and holds most of what is left | A missing region: a machined face, an unprinted corner, or lattice extending past the scan. Systematic. |
+| A band hot at every radius with the hot band always on the same axis extreme | Confirms the region or drift is on that axis; read it together with the two rows above. |
 | `component_size` 1 and `dark_neighbor_count` 0, stable across radii | A stochastically missing junction. This is the reportable defect. |
 | Nothing hot, no components above size 1 | Clean at junction level. |
 
-The discriminator between the middle two rows is radius sensitivity: drift
-shrinks as the probe widens, absent material does not.
+Both misalignment and a missing region raise the dark count and both fall as
+the radius grows, so the count alone does not separate them — a wide probe
+eventually finds material for a merely-displaced junction, but never for one
+sitting in air. **What separates them is whether the biggest lump survives.**
+Compute `dark_components.largest / n_candidates` at your widest radius: near 1
+means one contiguous absent region; well below means scattered near-misses.
+
+Measured on the reference scan with deliberately broken lattices:
+
+| Lattice | r=4 | r=8 | r=12 | largest / candidates at r=12 |
+|---|---|---|---|---|
+| Rotated 2° | 716 dark, largest 392 | 288, largest 102 | 152, largest 73 | 0.48 |
+| Phantom cell layer | 841 dark, largest 537 | 553, largest 380 | 375, largest 369 | 0.98 |
+
+The rotated lattice's largest component collapses 5.4x; the phantom layer's
+barely moves. A single radius could not have told them apart.
 
 ## Choosing the radius
 
