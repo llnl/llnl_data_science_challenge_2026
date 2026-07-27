@@ -23,6 +23,11 @@ for the full challenge description.
       (real CT `.tif` stacks of 9x9x9 octet lattices with 0%, 0.5%, and 1%
       nominal missing struts, 3 replicates each). Goal: detect missing
       junctions/struts directly from the `.tif` files.
+- [x] Phase 2a — junction detection packaged for agents: `src/junction_scan.py`
+      (science), the `scan_lattice_junctions` and `visualize_junction_overlay`
+      MCP tools, and the `scan-junctions` skill. The skill runs alignment and
+      systematic checks *before* reporting stochastic candidates, and treats the
+      sampling radius as its one free parameter.
 
 **Current focus is missing junctions, not missing struts.** The strut detector
 works and its findings are recorded below, but validating it is parked.
@@ -37,6 +42,10 @@ and `registered_jsons/` holds only its companion — so **no 0% control specimen
 is available** for validating a detector against a known-clean part.
 
 ## Missing junctions — solved and validated
+
+The detector now lives in `src/junction_scan.py`; `mark_junction_candidates_tiff.py`
+is a thin script over it, and the `scan-junctions` skill is how an agent drives
+it. All three produce the same numbers below.
 
 `src/mark_junction_candidates_tiff.py` finds **2 missing junctions** in the
 `0point5dash1` scan: merged ids 513 at (141, 685, 499) and 2682 at

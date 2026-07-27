@@ -5,7 +5,9 @@
 - `src/` contains the Python implementation: `mcp_server.py` defines FastMCP tools, while `skeletonization.py` provides the underlying image-processing routine.
 - `data/` holds sample CT volumes, TIFF stacks, meshes, JSON metadata, and reference images. Treat these as inputs; place generated outputs in a clearly named subdirectory rather than overwriting source data.
 - `images/` and `presentation/` contain documentation assets.
-- `.agents/skills/` stores project-specific Codex skills, and `.codex/agents/` stores subagent definitions.
+- `.agents/skills/` stores project-specific skills, and `.codex/agents/` stores subagent definitions. Skills live here canonically; `.claude/skills/` holds relative symlinks to them so Claude Code discovers the same files rather than a second copy that can drift.
+- `evals/` holds LLM-as-judge rubrics and the scripts that manufacture their inputs (for example `perturb_lattice_json.py`). There is no runner; rubrics are applied by hand to an agent's report.
+- `.mcp.json` registers the FastMCP server for Claude Code. It invokes plain `python`, so that interpreter must be the environment where `pip install -r requirements.txt` was run — `skeleton_graph` imports `skan` at module scope, so a missing dependency takes down the whole server, not one tool.
 - `README.md` and `DATA_SCIENCE_CHALLENGE_2026.pdf` describe the exercises and expected workflows.
 
 ## Setup, Test, and Development Commands
@@ -27,7 +29,7 @@ Follow standard PEP 8 conventions: four-space indentation, `snake_case` for func
 
 ## Testing Guidelines
 
-No automated test suite or coverage threshold is currently configured. Add tests under `tests/` using `pytest`, with files named `test_<module>.py` and functions named `test_<behavior>()`. Prefer small synthetic NumPy arrays over committed binary fixtures. Test success cases plus missing files, invalid axes or slice indices, unexpected dimensions, and output creation. Run future tests with `pytest -q`.
+Tests live under `tests/` and run with `pytest -q`. Name files `test_<module>.py` and functions `test_<behavior>()`. Prefer small synthetic NumPy arrays over committed binary fixtures; `tests/conftest.py` builds a miniature lattice and matching volume for anything junction-related. Test success cases plus missing files, invalid axes or slice indices, unexpected dimensions, and output creation. Run future tests with `pytest -q`.
 
 ## Commit & Pull Request Guidelines
 

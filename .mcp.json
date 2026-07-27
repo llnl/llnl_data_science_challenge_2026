@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ct-segmentation": {
+      "command": "python",
+      "args": ["src/mcp_server.py"]
+    }
+  }
+}

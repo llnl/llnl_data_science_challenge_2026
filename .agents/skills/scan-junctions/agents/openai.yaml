@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scan Junctions"
+  short_description: "QC a lattice CT scan for misalignment and missing junctions."
+  default_prompt: "Use $scan-junctions to check a lattice CT scan against its registered design JSON and report any missing junctions."
