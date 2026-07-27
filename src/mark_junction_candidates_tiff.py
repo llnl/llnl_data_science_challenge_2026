@@ -33,19 +33,15 @@ retired the explicit x cutoff this module used to carry.
 """
 
 import numpy as np
-import tifffile
-from skimage.filters import threshold_otsu
 
+from junction_scan import save_marked_tiff, scan_junctions
 from overlay_registered_nodes_histogram import (
     MAX_SAMPLE_RADIUS_VOXELS,
     NPY_PATH,
     OUTPUT_DIR,
     REGISTERED_JSON_PATH,
-    sample_volume_at_nodes,
 )
-from mark_missing_junctions_tiff import mark_points, to_rgb_uint8
-from strut_center_intensity_histogram import load_lattice
-from strut_cylinder_segmentation import NOMINAL_JSON_PATH, bottom_layer_junctions
+from strut_cylinder_segmentation import NOMINAL_JSON_PATH
 
 TIFF_OUTPUT_PATH = OUTPUT_DIR / "junction_candidates_marked.tif"
 CSV_OUTPUT_PATH = OUTPUT_DIR / "junction_candidates.csv"
@@ -55,7 +51,6 @@ CSV_OUTPUT_PATH = OUTPUT_DIR / "junction_candidates.csv"
 # swallowed more than was measured would invite reading absence into voxels the
 # detector never looked at.
 MARKER_RADIUS_VOXELS = MAX_SAMPLE_RADIUS_VOXELS
-CANDIDATE_COLOR = (255, 0, 0)
 
 
 def main() -> None:
@@ -66,57 +61,53 @@ def main() -> None:
     volume = np.load(NPY_PATH)
     print(f"Volume shape (z, y, x): {volume.shape}, dtype: {volume.dtype}")
 
-    threshold = threshold_otsu(volume)
-    print(f"Full-volume Otsu threshold ({volume.size} voxels): {threshold:.0f}")
-
-    positions_xyz, strut_junction_ids, entry_to_junction = load_lattice(
-        REGISTERED_JSON_PATH
+    result = scan_junctions(
+        volume,
+        REGISTERED_JSON_PATH,
+        radius=MARKER_RADIUS_VOXELS,
+        nominal_json_path=NOMINAL_JSON_PATH,
+        exclude_bottom_face=True,
     )
-    n_junctions = len(positions_xyz)
-    degree = np.bincount(strut_junction_ids.ravel(), minlength=n_junctions)
-    values, voxel_xyz = sample_volume_at_nodes(volume, positions_xyz)
+    print(f"Full-volume Otsu threshold ({volume.size} voxels): {result.threshold:.0f}")
     print(
-        f"Loaded {n_junctions} junctions (merged from {len(entry_to_junction)} "
-        f"JSON entries), degree {degree.min()}-{degree.max()}"
+        f"Loaded {result.n_junctions} junctions (merged from "
+        f"{len(result.entry_to_junction)} JSON entries), degree "
+        f"{result.degree.min()}-{result.degree.max()}"
     )
 
-    dark = values < threshold
-    bottom = bottom_layer_junctions(NOMINAL_JSON_PATH, entry_to_junction, n_junctions)
-    candidate = dark & ~bottom
-
+    candidate = result.candidate
     print(
-        f"Dark junctions: {dark.sum()}, of which {(dark & bottom).sum()} lie on "
-        f"the machined-off bottom face"
+        f"Dark junctions: {result.dark.sum()}, of which "
+        f"{(result.dark & result.excluded).sum()} lie on the machined-off bottom face"
     )
     print(
-        f"Candidates: {candidate.sum()} of {(~bottom).sum()} scored junctions "
-        f"({candidate.sum() / (~bottom).sum():.2%})"
+        f"Candidates: {candidate.sum()} of {(~result.excluded).sum()} scored "
+        f"junctions ({candidate.sum() / (~result.excluded).sum():.2%})"
     )
     for junction in np.flatnonzero(candidate):
-        x, y, z = voxel_xyz[junction]
+        x, y, z = result.voxel_xyz[junction]
         print(
             f"  junction {junction:5d}  x={x:3d} y={y:3d} z={z:3d}  "
-            f"intensity={values[junction]:6d}  degree={degree[junction]:2d}"
+            f"intensity={result.intensities[junction]:6d}  "
+            f"degree={result.degree[junction]:2d}"
         )
 
-    rgb_volume = to_rgb_uint8(volume)
-    del volume
-    mark_points(rgb_volume, voxel_xyz[candidate], MARKER_RADIUS_VOXELS, CANDIDATE_COLOR)
-
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    tifffile.imwrite(TIFF_OUTPUT_PATH, rgb_volume, photometric="rgb", bigtiff=True)
+    save_marked_tiff(volume, result, TIFF_OUTPUT_PATH)
     print(f"Saved {TIFF_OUTPUT_PATH}")
 
     # Merged ids do not index the JSON's junctions array, so each row also
     # carries the entry ids it was built from, for cross-referencing the source.
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     with CSV_OUTPUT_PATH.open("w") as f:
         f.write("junction_id,x,y,z,intensity,degree,entry_ids\n")
         for junction in np.flatnonzero(candidate):
-            x, y, z = voxel_xyz[junction]
-            entries = " ".join(str(e) for e in np.flatnonzero(entry_to_junction == junction))
+            x, y, z = result.voxel_xyz[junction]
+            entries = " ".join(
+                str(e) for e in np.flatnonzero(result.entry_to_junction == junction)
+            )
             f.write(
-                f"{junction},{x},{y},{z},{values[junction]},"
-                f"{degree[junction]},{entries}\n"
+                f"{junction},{x},{y},{z},{result.intensities[junction]},"
+                f"{result.degree[junction]},{entries}\n"
             )
     print(f"Saved {CSV_OUTPUT_PATH}")
 
