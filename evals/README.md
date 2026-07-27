@@ -23,45 +23,37 @@ changes is the lattice's claim about where its junctions are.
 
 ```bash
 REG='data/missing_struts/registered_jsons/210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.json'
-NOM='data/missing_struts/octet_truss_9x9x9.json'
 mkdir -p outputs/evals
 
 python evals/perturb_lattice_json.py "$REG" outputs/evals/rotated_2deg.json \
   --rotate-degrees 2 --rotate-axis z
 
 python evals/perturb_lattice_json.py "$REG" outputs/evals/phantom_x.json \
-  --add-phantom-slab x \
-  --nominal-input "$NOM" --nominal-output outputs/evals/phantom_x_nominal.json
+  --add-phantom-slab x
 ```
-
-A scan reads the registered and nominal lattices together and rejects a pair
-that does not describe the same entries, so the phantom slab is added to both.
-In the design file it lands on two clean new layers, `x=19` and `x=20`, one cell
-pitch past the part — which is how a genuinely unprinted or out-of-field region
-would present. Rotation leaves the entry list alone, so a rotated run uses the
-original nominal file.
 
 ### 2. Run the skill three times
 
 Each run gets a fresh session and its own output directory, against
 `data/9x9x9_octet_lattice/9x9x9_octet_lattice.tif`:
 
-| Run | Registered JSON | Nominal JSON | Rubric |
-|---|---|---|---|
-| clean | the unmodified registered JSON | `data/missing_struts/octet_truss_9x9x9.json` | `rubric_scan_junctions_clean.md` |
-| rotated | `outputs/evals/rotated_2deg.json` | the same unmodified nominal | `rubric_scan_junctions_rotation.md` |
-| phantom | `outputs/evals/phantom_x.json` | `outputs/evals/phantom_x_nominal.json` | `rubric_scan_junctions_phantoms.md` |
+| Run | Lattice JSON | Rubric |
+|---|---|---|
+| clean | the unmodified registered JSON | `rubric_scan_junctions_clean.md` |
+| rotated | `outputs/evals/rotated_2deg.json` | `rubric_scan_junctions_rotation.md` |
+| phantom | `outputs/evals/phantom_x.json` | `rubric_scan_junctions_phantoms.md` |
 
 Give the agent only the paths. Do not mention that a lattice was perturbed, or
 which one — detecting that unprompted is the thing being measured.
 
-For reference, the darkest design layer each run should be reading:
+For reference, what each run should be reading — dark count, largest connected
+component, and their ratio:
 
 | Run | r=4 | r=8 | r=12 |
 |---|---|---|---|
-| clean | y=18, 100% | y=18, 94.5% | y=18, 2.2% |
-| rotated | x=18, 95.6% | x=18, 61.9% | y=18, 46.4% |
-| phantom | x=19, 100.0% | x=19, 100.0% | x=19, 100.0% |
+| clean | 304, 296 → 0.97 | 173, 171 → 0.99 | 6, 1 → 0.17 |
+| rotated | 716, 392 → 0.55 | 288, 102 → 0.35 | 152, 73 → 0.48 |
+| phantom | 665, 662 → 1.00 | 534, 532 → 1.00 | 367, 363 → 0.99 |
 
 ### 3. Judge each report
 

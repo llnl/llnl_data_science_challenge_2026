@@ -20,7 +20,6 @@ from junction_scan import (  # noqa: E402
     CSV_HEADER,
     dark_component_sizes,
     dark_neighbor_counts,
-    parse_design_layers,
     parse_junction_ids,
     save_marked_tiff,
     save_mip_overlay_with_status,
@@ -32,13 +31,8 @@ from junction_scan import (  # noqa: E402
 
 
 def _scan(lattice, **kwargs):
-    """Scan a fixture lattice; both JSONs are always required, only extras vary."""
-    return scan_junctions(
-        lattice.volume,
-        lattice.registered_json_path,
-        lattice.nominal_json_path,
-        **kwargs,
-    )
+    """Scan a fixture lattice; only the extras vary between tests."""
+    return scan_junctions(lattice.volume, lattice.registered_json_path, **kwargs)
 
 
 def _junction_at(result, position_xyz) -> int:
@@ -75,21 +69,6 @@ def test_threshold_is_the_volume_otsu_not_the_nodes(synthetic_lattice):
     assert BACKGROUND_LEVEL < result.threshold < MATERIAL_LEVEL
 
 
-def test_design_grid_is_axis_aligned_where_the_registered_lattice_is_offset(tmp_path):
-    """The design grid must come from the nominal file, not from the scanned one.
-
-    Registered coordinates on a real specimen are rotated and drifted; the whole
-    point of carrying the nominal grid is that it is neither. A fixture whose
-    registered positions are shifted off the material still has to yield the
-    clean 0..2 integer grid.
-    """
-    lattice = make_synthetic_lattice(tmp_path, json_offset=(4.0, 4.0, 4.0))
-    result = _scan(lattice)
-
-    for column in range(3):
-        assert np.unique(result.design_xyz[:, column]).tolist() == [0.0, 1.0, 2.0]
-
-
 def test_radius_absorbs_a_registration_offset(tmp_path):
     """A misregistered lattice reads as wholly absent until the radius covers the drift.
 
@@ -106,78 +85,6 @@ def test_radius_absorbs_a_registration_offset(tmp_path):
 
     forgiving = _scan(lattice, radius=6)
     assert not forgiving.dark.any()
-
-
-@pytest.mark.parametrize("spec", ["y=max", "y=2", "y=2.0", " Y = MAX "])
-def test_exclude_design_layer_removes_one_face_however_it_is_named(
-    synthetic_lattice, spec
-):
-    result = _scan(synthetic_lattice, exclude_design_layers=[spec])
-
-    assert result.excluded.sum() == 9  # one 3x3 face of the 3x3x3 grid
-    # The dark junction is interior, so excluding a face must not hide it.
-    assert result.candidate.sum() == 1
-
-
-def test_exclude_design_layers_selects_the_named_axis_and_end(synthetic_lattice):
-    """Nothing about which face is special is built in -- min and max both work."""
-    low = _scan(synthetic_lattice, exclude_design_layers=["z=min"])
-    high = _scan(synthetic_lattice, exclude_design_layers=["z=max"])
-
-    assert low.excluded.sum() == high.excluded.sum() == 9
-    assert not (low.excluded & high.excluded).any()
-
-    both = _scan(synthetic_lattice, exclude_design_layers=["z=min", "z=max"])
-    assert both.excluded.sum() == 18
-
-
-def test_design_layer_naming_no_existing_layer_raises(synthetic_lattice):
-    """Excluding nothing must not be mistakable for a clean result."""
-    with pytest.raises(ValueError, match="no design layer at y=7"):
-        _scan(synthetic_lattice, exclude_design_layers=["y=7"])
-
-
-@pytest.mark.parametrize("spec", ["y", "w=max", "=max", "y=middle"])
-def test_malformed_design_layer_raises(synthetic_lattice, spec):
-    with pytest.raises(ValueError, match="design layer"):
-        _scan(synthetic_lattice, exclude_design_layers=[spec])
-
-
-def test_nominal_lattice_of_a_different_size_raises(synthetic_lattice, tmp_path):
-    """The wrong nominal file must fail loudly, not produce a plausible grid."""
-    data = json.loads(synthetic_lattice.nominal_json_path.read_text())
-    data["junctions"] = data["junctions"][:-2]
-    truncated = tmp_path / "truncated_nominal.json"
-    truncated.write_text(json.dumps(data))
-
-    with pytest.raises(ValueError, match="must describe the same lattice"):
-        scan_junctions(
-            synthetic_lattice.volume,
-            synthetic_lattice.registered_json_path,
-            truncated,
-        )
-
-
-def test_nominal_lattice_disagreeing_within_a_merged_group_raises(
-    synthetic_lattice, tmp_path
-):
-    """Co-located registered entries must share a nominal position.
-
-    Two files that pass the entry-count check can still be different lattices,
-    and the scatter onto merged junctions would silently keep whichever entry
-    was written last.
-    """
-    data = json.loads(synthetic_lattice.nominal_json_path.read_text())
-    data["junctions"][1]["position"] = [9.0, 9.0, 9.0]
-    inconsistent = tmp_path / "inconsistent_nominal.json"
-    inconsistent.write_text(json.dumps(data))
-
-    with pytest.raises(ValueError, match="not the same lattice"):
-        scan_junctions(
-            synthetic_lattice.volume,
-            synthetic_lattice.registered_json_path,
-            inconsistent,
-        )
 
 
 def test_exclude_junction_ids_suppresses_a_candidate(synthetic_lattice):
@@ -203,9 +110,7 @@ def test_non_positive_radius_raises(synthetic_lattice, radius):
 def test_non_volumetric_input_raises(synthetic_lattice):
     with pytest.raises(ValueError, match="expected a 3D volume"):
         scan_junctions(
-            synthetic_lattice.volume[0],
-            synthetic_lattice.registered_json_path,
-            synthetic_lattice.nominal_json_path,
+            synthetic_lattice.volume[0], synthetic_lattice.registered_json_path
         )
 
 
@@ -266,26 +171,13 @@ def test_summary_bands_partition_the_scored_junctions(synthetic_lattice):
         assert sum(band["n_scored"] for band in bands) == summary["n_scored"]
         assert sum(band["n_dark"] for band in bands) == summary["n_candidates"]
 
-        layers = summary["dark_fraction_by_design_layer"][axis]
-        assert [layer["layer"] for layer in layers] == [f"{axis}={v}" for v in (0, 1, 2)]
-        assert sum(layer["n_scored"] for layer in layers) == summary["n_scored"]
-        assert sum(layer["n_dark"] for layer in layers) == summary["n_candidates"]
-
     octants = summary["dark_fraction_by_octant"]
     assert len(octants) == 8
     assert sum(cell["n_scored"] for cell in octants) == summary["n_scored"]
 
 
-def test_design_layers_localize_a_missing_face_that_bands_only_approximate(
-    synthetic_lattice,
-):
-    """A whole dark face is a design layer exactly, and a registered band only roughly.
-
-    Bands are equal-width slices of the scanned coordinate, so a face lands in
-    the last one along with whatever else shares that slab. The design layer is
-    the face itself, which is why it is the statistic that names a systematic
-    region.
-    """
+def test_summary_bands_localize_a_missing_face(synthetic_lattice):
+    """Excluding nothing, a whole dark face should land in one y band."""
     result = _scan(synthetic_lattice)
     # Force the maximum-y layer dark, standing in for a machined-off face.
     max_y = result.positions_xyz[:, 1].max()
@@ -295,16 +187,12 @@ def test_design_layers_localize_a_missing_face_that_bands_only_approximate(
     summary = summarize_scan(faced, n_bands=3)
     y_bands = summary["dark_fraction_by_band"]["y"]
     assert y_bands[-1]["dark_fraction"] == 1.0
-
-    y_layers = summary["dark_fraction_by_design_layer"]["y"]
-    assert [layer["dark_fraction"] for layer in y_layers[:-1]] != [1.0, 1.0]
-    assert y_layers[-1] == {
-        "layer": "y=2",
-        "value": 2.0,
-        "n_scored": 9,
-        "n_dark": 9,
-        "dark_fraction": 1.0,
-    }
+    # The nine face junctions plus the pre-existing dark one, which is a strut
+    # away from the face and so joins its component -- a real property of the
+    # statistic worth pinning: an isolated defect touching a systematic region
+    # is absorbed into it and stops looking isolated.
+    assert summary["dark_components"]["largest"] == 10
+    assert summary["dark_components"]["n_components"] == 1
     # The nine face junctions plus the pre-existing dark one, which is a strut
     # away from the face and so joins its component -- a real property of the
     # statistic worth pinning: an isolated defect touching a systematic region
@@ -322,9 +210,6 @@ def test_csv_has_a_row_for_every_junction(synthetic_lattice, tmp_path):
     assert len(lines) == result.n_junctions + 1
 
     assert _column(lines, "dark").count("1") == 1
-    # The design grid is carried per row so a reader can group by layer without
-    # re-reading the nominal JSON.
-    assert sorted(set(_column(lines, "design_y"))) == ["0", "1", "2"]
     # Every junction carries the two source entries it was merged from.
     assert all(len(entries.split()) == 2 for entries in _column(lines, "entry_ids"))
 
@@ -376,17 +261,3 @@ def test_marked_tiff_paints_the_candidate_red(synthetic_lattice, tmp_path):
 )
 def test_parse_junction_ids(text, expected):
     assert list(parse_junction_ids(text)) == expected
-
-
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("", []),
-        ("  ", []),
-        ("y=max", ["y=max"]),
-        ("y=max,x=min", ["y=max", "x=min"]),
-        ("y=max x=min", ["y=max", "x=min"]),
-    ],
-)
-def test_parse_design_layers(text, expected):
-    assert list(parse_design_layers(text)) == expected

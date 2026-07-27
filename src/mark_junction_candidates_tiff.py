@@ -32,6 +32,8 @@ current ``MAX_SAMPLE_RADIUS_VOXELS`` that band flags nothing, which is what
 retired the explicit x cutoff this module used to carry.
 """
 
+from dataclasses import replace
+
 import numpy as np
 
 from junction_scan import save_marked_tiff, scan_junctions
@@ -41,7 +43,7 @@ from overlay_registered_nodes_histogram import (
     OUTPUT_DIR,
     REGISTERED_JSON_PATH,
 )
-from strut_cylinder_segmentation import NOMINAL_JSON_PATH
+from strut_cylinder_segmentation import NOMINAL_JSON_PATH, bottom_layer_junctions
 
 TIFF_OUTPUT_PATH = OUTPUT_DIR / "junction_candidates_marked.tif"
 CSV_OUTPUT_PATH = OUTPUT_DIR / "junction_candidates.csv"
@@ -62,14 +64,17 @@ def main() -> None:
     print(f"Volume shape (z, y, x): {volume.shape}, dtype: {volume.dtype}")
 
     result = scan_junctions(
-        volume,
-        REGISTERED_JSON_PATH,
-        NOMINAL_JSON_PATH,
-        radius=MARKER_RADIUS_VOXELS,
-        # The machined-off face is the design's maximum-Y layer. Naming it as a
-        # design layer rather than as a built-in flag keeps this specimen's
-        # machining artifact out of the detector itself.
-        exclude_design_layers=("y=max",),
+        volume, REGISTERED_JSON_PATH, radius=MARKER_RADIUS_VOXELS
+    )
+    # The machined-off face is a property of *this* specimen, so it is excluded
+    # here rather than inside the detector, which knows nothing about any
+    # particular part. An agent working from ``scan_junctions`` reaches the same
+    # set by reading the CSV and the overlays.
+    result = replace(
+        result,
+        excluded=bottom_layer_junctions(
+            NOMINAL_JSON_PATH, result.entry_to_junction, result.n_junctions
+        ),
     )
     print(f"Full-volume Otsu threshold ({volume.size} voxels): {result.threshold:.0f}")
     print(

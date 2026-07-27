@@ -26,7 +26,6 @@ from matplotlib import pyplot as plt
 # Imported after the Agg block: junction_scan pulls in pyplot transitively, and
 # a default backend selected first could try to reach a display.
 from junction_scan import (
-    parse_design_layers,
     parse_junction_ids,
     save_marked_tiff,
     save_mip_overlay_with_status,
@@ -189,10 +188,8 @@ def graph_skeleton(
 def scan_lattice_junctions(
     volume_path: str,
     registered_json_path: str,
-    nominal_json_path: str,
     output_dir: str,
     radius: int = 8,
-    exclude_design_layers: str = "",
     exclude_junction_ids: str = "",
     write_marked_tiff: bool = False,
 ) -> str:
@@ -212,23 +209,15 @@ def scan_lattice_junctions(
         registered_json_path: Lattice JSON registered to this volume's voxel
             coordinates. Nominal or raw design JSONs are not aligned and will
             flag nearly everything.
-        nominal_json_path: The same lattice as designed, on a clean integer
-            grid, listing the same entries in the same order. Required: the
-            registered coordinates are rotated, so only the design grid can name
-            a face or slab, and the summary's per-design-layer dark fractions
-            are what reveal a whole missing region on any specimen.
         output_dir: Directory for the CSV and summary JSON. Both filenames carry
             the radius, so repeated calls at different radii do not overwrite.
         radius: Sampling sphere radius in voxels. This absorbs residual
             registration drift; 8 is the validated starting point for the 9x9x9
             octet specimens.
-        exclude_design_layers: Design-grid layers to keep out of the candidate
-            list, comma- or space-separated, each written ``"y=max"``,
-            ``"y=min"`` or ``"y=18"``. Use only for a region established to be
-            absent from the part itself. Excluded junctions are still scored and
-            counted.
-        exclude_junction_ids: Individual merged junction ids to exclude, comma-
-            or space-separated.
+        exclude_junction_ids: Merged junction ids to keep out of the candidate
+            list, comma- or space-separated. Use once the CSV and the overlays
+            have established that those junctions are absent from the part
+            rather than from the scan; they are still scored and counted.
         write_marked_tiff: Also write an RGB TIFF with candidates painted. Costs
             roughly three bytes per input voxel in memory and on disk.
 
@@ -239,16 +228,13 @@ def scan_lattice_junctions(
     try:
         volume_input = _validate_volume_input(volume_path)
         registered_path = _validate_json_input(registered_json_path, "registered_json_path")
-        nominal_path = _validate_json_input(nominal_json_path, "nominal_json_path")
         output_directory = Path(output_dir).expanduser()
 
         volume = _load_volume(volume_input)
         result = scan_junctions(
             volume,
             registered_path,
-            nominal_path,
             radius=radius,
-            exclude_design_layers=parse_design_layers(exclude_design_layers),
             exclude_junction_ids=parse_junction_ids(exclude_junction_ids),
         )
         summary = summarize_scan(result)
@@ -273,7 +259,6 @@ def scan_lattice_junctions(
             f"junction(s) across {summary['dark_components']['n_components']} "
             f"component(s).",
             _describe_worst_band(summary),
-            _describe_worst_design_layer(summary),
             _describe_candidates(summary),
         ]
 
@@ -294,13 +279,12 @@ def scan_lattice_junctions(
 def visualize_junction_overlay(
     volume_path: str,
     registered_json_path: str,
-    nominal_json_path: str,
     output_path: str,
     mode: str = "slice",
     axis: int = 0,
     slice_index: int = -1,
     radius: int = 8,
-    exclude_design_layers: str = "",
+    exclude_junction_ids: str = "",
 ) -> str:
     """Render the lattice over the CT volume, colored by junction status.
 
@@ -317,8 +301,6 @@ def visualize_junction_overlay(
     Args:
         volume_path: Existing 3D CT volume as ``.npy``, ``.tif``, or ``.tiff``.
         registered_json_path: Lattice JSON registered to this volume.
-        nominal_json_path: The same lattice as designed, on a clean integer
-            grid, listing the same entries in the same order.
         output_path: Destination image; the suffix picks the format (e.g. .png).
         mode: ``"slice"`` for a single plane, ``"mip"`` for a maximum-intensity
             projection along ``axis``.
@@ -326,7 +308,7 @@ def visualize_junction_overlay(
         slice_index: Slice index for ``mode="slice"``; -1 selects the median
             junction coordinate along ``axis``. Ignored for ``mode="mip"``.
         radius: Sampling sphere radius in voxels, matching the scan being checked.
-        exclude_design_layers: Design-grid layers to color as excluded rather
+        exclude_junction_ids: Merged junction ids to color as excluded rather
             than as candidates, matching the scan being checked.
 
     Returns:
@@ -338,16 +320,14 @@ def visualize_junction_overlay(
 
         volume_input = _validate_volume_input(volume_path)
         registered_path = _validate_json_input(registered_json_path, "registered_json_path")
-        nominal_path = _validate_json_input(nominal_json_path, "nominal_json_path")
         destination = Path(output_path).expanduser()
 
         volume = _load_volume(volume_input)
         result = scan_junctions(
             volume,
             registered_path,
-            nominal_path,
             radius=radius,
-            exclude_design_layers=parse_design_layers(exclude_design_layers),
+            exclude_junction_ids=parse_junction_ids(exclude_junction_ids),
         )
 
         if mode == "mip":
@@ -400,29 +380,6 @@ def _describe_worst_band(summary: dict) -> str:
         f"Highest dark fraction in any band: {fraction:.2%} "
         f"({name} {band['lo']:.0f}-{band['hi']:.0f}, {band['n_dark']}/"
         f"{band['n_scored']})."
-    )
-
-
-def _describe_worst_design_layer(summary: dict) -> str:
-    """Name the design-grid layer with the highest dark fraction.
-
-    Registered bands can only say "one side of the volume is dark". This says
-    which *design* layer is dark, which is the form a machined face, an
-    unprinted end, or lattice reaching past the scan actually takes -- and it
-    names it the way ``exclude_design_layers`` would take it back.
-    """
-    ranked = [
-        (layer["dark_fraction"], layer)
-        for layers in summary["dark_fraction_by_design_layer"].values()
-        for layer in layers
-        if layer["dark_fraction"] is not None
-    ]
-    if not ranked:
-        return "No scored junctions to group by design layer."
-    fraction, layer = max(ranked, key=lambda item: item[0])
-    return (
-        f"Darkest design layer: {layer['layer']} at {fraction:.2%} "
-        f"({layer['n_dark']}/{layer['n_scored']})."
     )
 
 

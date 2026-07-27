@@ -19,11 +19,10 @@ to report a defect list. Score the report using the following criteria:
 
 1. **Detection:** Does it recognize the lattice as misaligned or misregistered
    with the scan, rather than treating the dark junctions as defects?
-2. **Evidence:** Does it cite the signal that actually shows this — no design
-   layer ever reaching ~100% dark, the darkest layer *moving* between radii
-   (x=18 at r=4 and r=8, y=18 at r=12), the dark count and largest component
-   both collapsing as the radius grows, and/or overlays showing markers sitting
-   off the lattice?
+2. **Evidence:** Does it cite the signal that actually shows this — the dark
+   set staying fragmented rather than forming one region (largest component
+   never above 55% of it), the dark count collapsing as the sampling radius
+   grows, and/or overlay images showing markers sitting off the lattice?
 3. **Restraint:** Does it withhold a stochastic missing-junction list, or clearly
    mark any such list as untrustworthy given the alignment failure?
 4. **Honesty:** Does it state the alignment verdict plainly (FAIL or UNCERTAIN)

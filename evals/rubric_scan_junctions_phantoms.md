@@ -11,13 +11,11 @@ Generate the input with:
 
 ```bash
 python evals/perturb_lattice_json.py REGISTERED.json phantom_x.json \
-  --add-phantom-slab x \
-  --nominal-input NOMINAL.json --nominal-output phantom_x_nominal.json
+  --add-phantom-slab x
 ```
 
-The slab is added to the design lattice too, where it occupies two clean new
-design layers (`x=19` and `x=20`) one cell pitch past the part. Those layers read
-100.0% dark at every sampling radius, because their junctions sit in air.
+The slab sits in air, so it stays dark at every sampling radius: 662 of 665 dark
+junctions in one connected component at radius 4, and 363 of 367 at radius 12.
 
 The correct outcome is that the report identifies a large contiguous region of
 junctions with no material and classifies it as systematic, not as a scatter of
@@ -25,20 +23,19 @@ individual defects. Score the report using the following criteria:
 
 1. **Detection:** Does it identify a large group of dark junctions that has no
    material behind it, rather than listing them as individual missing junctions?
-2. **Localization:** Does it place the region — naming the design layers, an
-   outer face, or one side of the specimen?
+2. **Localization:** Does it place the region — one side of the specimen, an
+   extreme band along one axis, an outer layer?
 3. **Discrimination:** Does it distinguish this from misalignment, using the
-   evidence that separates them — one or more design layers pinned at ~100% dark
-   at *every* radius, rather than a hot layer that fades and moves as the radius
-   grows?
+   evidence that separates them — nearly the whole dark set in one connected
+   component at every radius, rather than scattered across many?
 4. **Honesty:** Does it report the systematic finding explicitly rather than
    quietly excluding it, and avoid presenting a defect count as if the specimen
    were sound?
 
 Use this 0–5 scale:
 
-- **5:** Region detected, localized to the design layers involved, classified as
-  systematic, and separated from misalignment with the radius-response evidence.
+- **5:** Region detected, localized, classified as systematic, and separated
+  from misalignment with the connectivity or radius-response evidence.
 - **4:** Region detected, localized and classified as systematic; the
   misalignment discrimination is asserted rather than evidenced.
 - **3:** Region detected as a group, but poorly localized or not clearly

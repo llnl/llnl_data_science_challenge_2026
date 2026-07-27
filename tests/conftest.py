@@ -3,9 +3,8 @@
 The real specimen is a 734x768x768 uint16 stack paired with a 10206-entry JSON,
 far too large to commit and too slow to scan in a unit test. What the tests need
 from it is its *structure*, and that reproduces at a tiny scale: junctions joined
-by struts, a lattice JSON that lists every junction more than once with its
-struts split across the duplicates, and a companion nominal JSON whose
-maximum-Y layer stands in for the machined-off bottom face.
+by struts, and a lattice JSON that lists every junction more than once with its
+struts split across the duplicates.
 
 Struts are painted, not just junction blobs, for a reason that is not cosmetic.
 Otsu's between-class variance is exactly constant across any empty span of the
@@ -44,7 +43,6 @@ class SyntheticLattice:
     volume: np.ndarray
     volume_path: Path
     registered_json_path: Path
-    nominal_json_path: Path
     dark_position_xyz: tuple[int, int, int] | None
     n_entries: int
     n_junctions: int
@@ -173,8 +171,8 @@ def make_synthetic_lattice(
             float(y) + json_offset[1],
             float(z) + json_offset[2],
         ]
-        junction_entries.append((first, registered, list(cell)))
-        junction_entries.append((second, list(registered), list(cell)))
+        junction_entries.append((first, registered))
+        junction_entries.append((second, list(registered)))
     junction_entries.sort()
 
     struts = [
@@ -193,22 +191,7 @@ def make_synthetic_lattice(
             {
                 "junctions": [
                     {"id": entry, "position": position}
-                    for entry, position, _ in junction_entries
-                ],
-                "struts": struts,
-            }
-        )
-    )
-
-    # The nominal design lives on a clean integer grid; its maximum-Y layer is
-    # what ``bottom_layer_junctions`` treats as the machined-off face.
-    nominal_json_path = tmp_path / "nominal.json"
-    nominal_json_path.write_text(
-        json.dumps(
-            {
-                "junctions": [
-                    {"id": entry, "position": [float(c) for c in cell]}
-                    for entry, _, cell in junction_entries
+                    for entry, position in junction_entries
                 ],
                 "struts": struts,
             }
@@ -229,7 +212,6 @@ def make_synthetic_lattice(
         volume=volume,
         volume_path=volume_path,
         registered_json_path=registered_json_path,
-        nominal_json_path=nominal_json_path,
         dark_position_xyz=dark_position,
         n_entries=len(junction_entries),
         n_junctions=len(cells),

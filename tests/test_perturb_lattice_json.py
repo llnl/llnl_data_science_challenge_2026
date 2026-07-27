@@ -22,7 +22,6 @@ from overlay_registered_nodes_histogram import (  # noqa: E402
 from perturb_lattice_json import (  # noqa: E402
     add_phantom_slab,
     load_lattice_json,
-    main,
     rotate_junctions,
 )
 
@@ -190,33 +189,15 @@ def test_phantom_slab_output_stays_schema_valid(cell_lattice_path):
     assert len(merged) < len(positions)
 
 
-def test_phantom_slab_stays_entry_aligned_between_registered_and_nominal():
-    """A scan reads both lattices and rejects a pair with different entries.
+def test_phantom_slab_is_shifted_by_exactly_one_cell_pitch():
+    """The copy must land where the next layer of cells would be.
 
-    The slab is selected from the unit-cell grid, which is identical in the two
-    files, so applying it to each independently has to yield the same entries in
-    the same order.
+    The shift is a mean over *distinct* positions: entries are duplicated once
+    per cell touching a junction, so boundary junctions appear fewer times and
+    an entry-weighted mean would land short of a full pitch.
     """
-    registered = add_phantom_slab(_cell_lattice(pitch=40.0), "x")
-    nominal = add_phantom_slab(_cell_lattice(pitch=1.0), "x")
-
-    assert len(registered["junctions"]) == len(nominal["junctions"])
-    assert [junction["id"] for junction in registered["junctions"]] == [
-        junction["id"] for junction in nominal["junctions"]
-    ]
-
-
-def test_phantom_slab_lands_on_the_design_grid():
-    """The design copy must sit on the grid, one whole cell pitch past the part.
-
-    An off-grid coordinate would be a giveaway: an agent could dismiss the slab
-    as obviously synthetic without doing the reasoning the eval is measuring.
-    The shift is a mean over *distinct* positions for exactly this reason --
-    entries are duplicated once per cell touching a junction, so boundary
-    junctions appear fewer times and an entry-weighted mean lands short.
-    """
-    nominal = add_phantom_slab(_cell_lattice(pitch=1.0), "x")
-    x = np.round([junction["position"][0] for junction in nominal["junctions"]], 6)
+    data = add_phantom_slab(_cell_lattice(pitch=1.0), "x")
+    x = np.round([junction["position"][0] for junction in data["junctions"]], 6)
 
     assert sorted(set(x.tolist())) == [0.0, 1.0, 2.0, 3.0]
 
@@ -245,25 +226,3 @@ def test_rejects_non_sequential_junction_ids(tmp_path: Path):
 def test_rejects_unknown_axes(cell_lattice_path, axis: str):
     with pytest.raises(ValueError, match="axis must be one of"):
         rotate_junctions(load_lattice_json(cell_lattice_path), 1.0, axis)
-
-
-def test_cli_refuses_a_phantom_slab_without_a_companion_nominal(
-    cell_lattice_path, tmp_path: Path, monkeypatch, capsys
-):
-    """Writing only the registered half would produce a pair no scan can load."""
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "perturb_lattice_json.py",
-            str(cell_lattice_path),
-            str(tmp_path / "out.json"),
-            "--add-phantom-slab",
-            "x",
-        ],
-    )
-    with pytest.raises(SystemExit):
-        main()
-
-    assert "--nominal-input" in capsys.readouterr().err
-    assert not (tmp_path / "out.json").exists()

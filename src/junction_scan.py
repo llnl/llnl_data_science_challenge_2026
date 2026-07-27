@@ -32,24 +32,16 @@ A junction goes dark only when *every* incident strut is absent, and an interior
 junction of this lattice has twelve. Missing single struts leave both endpoints
 bright and must be found at strut level -- see ``strut_cylinder_segmentation``.
 
-The design grid
----------------
-Every scan is measured against two lattice files: the *registered* JSON, whose
-coordinates are in this volume's voxel space, and the *nominal* JSON, the design
-on a clean integer grid. The nominal file is required rather than optional
-because registered coordinates are rotated, so no threshold on them recovers a
-design layer, and a face-shaped or slab-shaped absence is only nameable in
-design space. ``summarize_scan`` therefore reports a dark fraction per design
-layer along each design axis, which surfaces *any* missing face on *any*
-specimen -- no scan-specific geometry is built in. A caller that recognizes such
-a layer as a real property of the part drops it by name through
-``exclude_design_layers``.
+Nothing here knows anything about a particular specimen. The module measures and
+describes; deciding that a given region is absent from the *part* rather than
+from the scan is the caller's job, done by looking at the statistics, the CSV
+and the overlays. A caller that reaches that conclusion drops those junctions
+with ``exclude_junction_ids``.
 
 Coordinate conventions follow the rest of the pipeline: JSON ``position`` fields
 are [x, y, z] and index the volume's (z, y, x) axes.
 """
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -71,11 +63,6 @@ from strut_center_intensity_histogram import load_lattice
 
 CANDIDATE_COLOR = (255, 0, 0)
 
-# Design coordinates are quantized before layers are compared, so that a grid
-# written as 18 and one written as 17.999999 name the same layer.
-_LAYER_DECIMALS = 6
-_AXIS_COLUMN = {"x": 0, "y": 1, "z": 2}
-
 # Axis 0 of the volume is z, axis 1 is y, axis 2 is x, while positions are
 # [x, y, z]. Slicing along volume axis ``a`` therefore fixes position column
 # ``_DEPTH_COLUMN[a]`` and leaves ``_PLOT_COLUMNS[a]`` as the image's
@@ -95,8 +82,6 @@ class JunctionScanResult:
 
     Attributes:
         positions_xyz: (N, 3) merged junction positions as [x, y, z], unrounded.
-        design_xyz: (N, 3) the same junctions on the nominal design's integer
-            grid, which is axis-aligned where ``positions_xyz`` is rotated.
         voxel_xyz: (N, 3) integer voxel coordinates actually sampled.
         intensities: (N,) brightest voxel within ``radius`` of each junction.
         degree: (N,) number of incident struts, 3-12 for this lattice.
@@ -109,7 +94,6 @@ class JunctionScanResult:
     """
 
     positions_xyz: np.ndarray
-    design_xyz: np.ndarray
     voxel_xyz: np.ndarray
     intensities: np.ndarray
     degree: np.ndarray
@@ -130,117 +114,10 @@ class JunctionScanResult:
         return len(self.positions_xyz)
 
 
-def design_positions(
-    nominal_json_path: str | Path, entry_to_junction: np.ndarray, n_junctions: int
-) -> np.ndarray:
-    """Carry the nominal design's coordinates onto merged junctions.
-
-    The nominal JSON is read per *entry*, matching the registered file's own
-    entry list, and scattered onto merged junctions through ``entry_to_junction``.
-    Co-located entries share a nominal position, so the scatter is unambiguous --
-    and that is checked, because a nominal file paired with the wrong registered
-    file would otherwise silently produce a plausible-looking design grid.
-
-    Args:
-        nominal_json_path: The design lattice JSON, on a clean integer grid.
-        entry_to_junction: Entry-to-merged-junction map from ``load_lattice``.
-        n_junctions: Number of merged junctions.
-
-    Returns:
-        (N, 3) design coordinates as [x, y, z], one row per merged junction.
-
-    Raises:
-        ValueError: If the nominal JSON does not describe the same lattice,
-            entry for entry, as the registered one.
-    """
-    path = Path(nominal_json_path)
-    with path.open() as f:
-        data = json.load(f)
-
-    junctions = data["junctions"]
-    n_entries = len(entry_to_junction)
-    if len(junctions) != n_entries:
-        raise ValueError(
-            f"{path.name} has {len(junctions)} junction entries but the registered "
-            f"lattice has {n_entries}; the nominal and registered files must "
-            "describe the same lattice entry for entry"
-        )
-    if [junction["id"] for junction in junctions] != list(range(n_entries)):
-        raise ValueError(f"junction ids in {path.name} are not 0..N-1 in list order")
-
-    entry_positions = np.array(
-        [junction["position"] for junction in junctions], dtype=float
-    )
-    design = np.zeros((n_junctions, 3), dtype=float)
-    design[entry_to_junction] = entry_positions
-    if not np.allclose(design[entry_to_junction], entry_positions):
-        raise ValueError(
-            f"{path.name} gives different design positions to entries that the "
-            "registered lattice places at one junction; the two files are not the "
-            "same lattice"
-        )
-    return design
-
-
-def design_layer_values(design_xyz: np.ndarray, axis: str) -> np.ndarray:
-    """The distinct design-grid coordinates along one axis, ascending."""
-    return np.unique(np.round(design_xyz[:, _AXIS_COLUMN[axis]], _LAYER_DECIMALS))
-
-
-def design_layer_mask(design_xyz: np.ndarray, spec: str) -> np.ndarray:
-    """Select one design-grid layer, named as ``"y=max"``, ``"y=min"`` or ``"y=18"``.
-
-    Layers are named in design space rather than by voxel coordinate because the
-    registered coordinates are rotated -- an axis-aligned face of the part is not
-    an axis-aligned set of registered positions.
-
-    Raises:
-        ValueError: On a malformed spec, an unknown axis, or a numeric value
-            that names no layer of this lattice.
-    """
-    axis, separator, value = spec.partition("=")
-    axis = axis.strip().lower()
-    value = value.strip().lower()
-    if not separator or axis not in _AXIS_COLUMN or not value:
-        raise ValueError(
-            f"design layer {spec!r} must look like 'y=max', 'y=min' or 'y=18', "
-            "with an axis of x, y or z"
-        )
-
-    layers = design_layer_values(design_xyz, axis)
-    if value == "max":
-        target = float(layers[-1])
-    elif value == "min":
-        target = float(layers[0])
-    else:
-        try:
-            requested = float(value)
-        except ValueError:
-            raise ValueError(
-                f"design layer {spec!r} must name a coordinate, 'max' or 'min', "
-                f"not {value!r}"
-            ) from None
-        target = float(layers[np.abs(layers - requested).argmin()])
-        # Silently excluding nothing would look identical to a clean result, so
-        # a value that names no layer is an error rather than an empty mask.
-        if abs(target - requested) > 0.5:
-            shown = ", ".join(f"{layer:g}" for layer in layers[:12])
-            raise ValueError(
-                f"no design layer at {axis}={requested:g}; this lattice has "
-                f"{len(layers)} layers on that axis ({shown}"
-                f"{', ...' if len(layers) > 12 else ''})"
-            )
-
-    coordinate = np.round(design_xyz[:, _AXIS_COLUMN[axis]], _LAYER_DECIMALS)
-    return coordinate == target
-
-
 def scan_junctions(
     volume: np.ndarray,
     registered_json_path: str | Path,
-    nominal_json_path: str | Path,
     radius: int = MAX_SAMPLE_RADIUS_VOXELS,
-    exclude_design_layers: Iterable[str] = (),
     exclude_junction_ids: Iterable[int] = (),
 ) -> JunctionScanResult:
     """Sample the volume at every merged junction and flag the dark ones.
@@ -249,25 +126,20 @@ def scan_junctions(
         volume: 3D CT volume in (z, y, x) order.
         registered_json_path: Lattice JSON already registered to this volume's
             voxel coordinates. Un-registered/nominal JSONs do not line up.
-        nominal_json_path: The same lattice as designed, on a clean integer
-            grid. Required: it is what makes a missing face or slab nameable,
-            and it must list the same entries in the same order.
         radius: Sampling sphere radius in voxels. This is the free parameter
             that absorbs residual registration drift; see the module docstring
             of ``mark_junction_candidates_tiff`` for what too small looks like.
-        exclude_design_layers: Design-grid layers to keep out of the candidate
-            list, each named as ``"y=max"``, ``"y=min"`` or ``"y=18"``. Use this
-            for a face the caller has established is absent from the *part*, not
-            from the scan. Excluded junctions are still scored and reported.
-        exclude_junction_ids: Individual merged junction ids to exclude.
+        exclude_junction_ids: Merged junction ids to keep out of the candidate
+            list. Use this once the caller has established, from the statistics
+            and the images, that those junctions are absent from the *part*
+            rather than from the scan. They are still scored and reported.
 
     Returns:
         A ``JunctionScanResult``.
 
     Raises:
-        ValueError: If ``radius`` is not positive, if ``volume`` is not 3D, if
-            the nominal lattice does not match the registered one, if a layer
-            spec is malformed, or if an excluded id is out of range.
+        ValueError: If ``radius`` is not positive, if ``volume`` is not 3D, or
+            if an excluded id is out of range.
     """
     if volume.ndim != 3:
         raise ValueError(f"expected a 3D volume, found {volume.ndim} dimensions")
@@ -282,12 +154,8 @@ def scan_junctions(
     n_junctions = len(positions_xyz)
     degree = np.bincount(strut_junction_ids.ravel(), minlength=n_junctions)
     intensities, voxel_xyz = sample_volume_at_nodes(volume, positions_xyz, radius)
-    design_xyz = design_positions(nominal_json_path, entry_to_junction, n_junctions)
 
     excluded = np.zeros(n_junctions, dtype=bool)
-    for spec in exclude_design_layers:
-        excluded |= design_layer_mask(design_xyz, spec)
-
     extra = np.asarray(list(exclude_junction_ids), dtype=int)
     if extra.size:
         if extra.min() < 0 or extra.max() >= n_junctions:
@@ -299,7 +167,6 @@ def scan_junctions(
 
     return JunctionScanResult(
         positions_xyz=positions_xyz,
-        design_xyz=design_xyz,
         voxel_xyz=voxel_xyz,
         intensities=intensities,
         degree=degree,
@@ -396,35 +263,6 @@ def _band_stats(
     return bands
 
 
-def _design_layer_stats(
-    design_xyz: np.ndarray, axis: str, scored: np.ndarray, flagged: np.ndarray
-) -> list[dict]:
-    """One record per distinct design-grid layer along one design axis.
-
-    Bands over registered coordinates answer "is one side of the volume dark";
-    these answer the sharper question "is one *layer of the design* absent". A
-    machined-off face, an unprinted end, or a slab of lattice that extends past
-    the scanned field all appear here as a single layer at or near a dark
-    fraction of 1, whichever face of whichever specimen they land on.
-    """
-    coordinate = np.round(design_xyz[:, _AXIS_COLUMN[axis]], _LAYER_DECIMALS)
-    layers = []
-    for value in np.unique(coordinate):
-        in_layer = scored & (coordinate == value)
-        n = int(in_layer.sum())
-        n_dark = int((in_layer & flagged).sum())
-        layers.append(
-            {
-                "layer": f"{axis}={value:g}",
-                "value": float(value),
-                "n_scored": n,
-                "n_dark": n_dark,
-                "dark_fraction": (n_dark / n) if n else None,
-            }
-        )
-    return layers
-
-
 def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
     """Reduce a scan to a JSON-serializable summary aimed at triage.
 
@@ -437,10 +275,9 @@ def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
         n_bands: Number of equal-width bands per axis.
 
     Returns:
-        A dict of counts, per-axis band fractions, per-design-layer fractions,
-        octant fractions, dark connected-component sizes, and a per-candidate
-        record. Every value is a plain Python type, so the dict survives
-        ``json.dumps`` unchanged.
+        A dict of counts, per-axis band fractions, octant fractions, dark
+        connected-component sizes, and a per-candidate record. Every value is a
+        plain Python type, so the dict survives ``json.dumps`` unchanged.
     """
     scored = ~result.excluded
     candidate = result.candidate
@@ -532,10 +369,6 @@ def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
             )
             for name, column in (("x", 0), ("y", 1), ("z", 2))
         },
-        "dark_fraction_by_design_layer": {
-            axis: _design_layer_stats(result.design_xyz, axis, scored, candidate)
-            for axis in ("x", "y", "z")
-        },
         "dark_fraction_by_octant": octants,
         "dark_components": {
             "n_components": int(sum(entry["count"] for entry in size_histogram)),
@@ -547,8 +380,8 @@ def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
 
 
 CSV_HEADER = (
-    "junction_id,x,y,z,design_x,design_y,design_z,intensity,degree,dark,excluded,"
-    "dark_neighbor_count,component_size,entry_ids"
+    "junction_id,x,y,z,intensity,degree,dark,excluded,dark_neighbor_count,"
+    "component_size,entry_ids"
 )
 
 
@@ -556,9 +389,9 @@ def write_junction_csv(csv_path: str | Path, result: JunctionScanResult) -> Path
     """Write one row per merged junction, flagged or not.
 
     Every junction is written, not just the candidates, so a caller can do its
-    own spatial reasoning -- re-band the specimen, group by design layer,
-    correlate with degree, check whether a neighborhood is uniformly dim --
-    without re-running the scan.
+    own spatial reasoning -- re-band the specimen, correlate with degree, check
+    whether a neighborhood is uniformly dim, decide that a whole face is absent
+    and collect its ids -- without re-running the scan.
 
     Merged ids do not index the JSON's ``junctions`` array, so each row also
     carries the source entry ids it was built from.
@@ -581,10 +414,9 @@ def write_junction_csv(csv_path: str | Path, result: JunctionScanResult) -> Path
         f.write(CSV_HEADER + "\n")
         for junction in range(result.n_junctions):
             x, y, z = result.voxel_xyz[junction]
-            design = ",".join(f"{c:g}" for c in result.design_xyz[junction])
             entries = " ".join(str(e) for e in entries_by_junction[junction])
             f.write(
-                f"{junction},{x},{y},{z},{design},{result.intensities[junction]},"
+                f"{junction},{x},{y},{z},{result.intensities[junction]},"
                 f"{result.degree[junction]},{int(result.dark[junction])},"
                 f"{int(result.excluded[junction])},{neighbors[junction]},"
                 f"{components[junction]},{entries}\n"
@@ -775,15 +607,3 @@ def parse_junction_ids(text: str) -> Sequence[int]:
     """
     tokens = text.replace(",", " ").split()
     return [int(token) for token in tokens]
-
-
-def parse_design_layers(text: str) -> Sequence[str]:
-    """Parse a comma- or whitespace-separated list of design layer specs.
-
-    Empty and whitespace-only input yields an empty sequence, so a caller can
-    pass through an unset optional argument unchanged. Individual specs are not
-    validated here -- ``design_layer_mask`` does that against a real lattice, so
-    that an unknown layer is reported with the layers that do exist.
-    """
-    tokens = text.replace(",", " ").split()
-    return [token for token in tokens if token]
