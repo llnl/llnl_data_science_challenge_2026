@@ -274,47 +274,48 @@ def test_scan_lattice_struts_reports_the_absent_struts(
         str(strut_lattice.registered_json_path),
         str(output_dir),
         radius=3,
+        cap_voxels=8,
     )
 
     assert "Error" not in result
-    # One bisection is fixed by the tool, not a caller's choice.
-    assert "sampling each strut's midpoint" in result
+    # Three segments is fixed by the tool, not a caller's choice.
+    assert "cap 8, 3 segment(s) per strut" in result
     assert "54 struts across 27 merged junctions" in result
-    # The part-painted strut has a dark midpoint, so at one bisection it is
-    # indistinguishable from the wholly absent one -- the sensitivity this
-    # setting gives up in exchange for keeping the probe clear of the junctions.
-    assert "2 missing (3.70%)." in result
+    # The cap clears the junction blobs, so the wholly absent strut reads
+    # missing while the part-painted one is held apart from it as partial.
+    assert "1 missing (1.85%), 1 partial (1.85%)." in result
 
-    csv_path = output_dir / "strut_scan_r3.csv"
-    summary_path = output_dir / "strut_scan_r3_summary.json"
+    csv_path = output_dir / "strut_scan_r3_c8.csv"
+    summary_path = output_dir / "strut_scan_r3_c8_summary.json"
     assert str(csv_path) in result and str(summary_path) in result
 
     summary = json.loads(summary_path.read_text())
-    assert summary["n_bisections"] == 1
-    assert summary["n_points_per_strut"] == 1
-    assert summary["n_missing"] == 2
-    # Partial cannot arise from a single sample point; the summary must not
-    # imply the check ran and came back clean.
-    assert summary["n_partial"] == 0
+    assert summary["n_bisections"] == 2
+    assert summary["n_segments_per_strut"] == 3
+    assert summary["cap_voxels"] == 8
+    assert summary["n_missing"] == 1
+    assert summary["n_partial"] == 1
     assert len(csv_path.read_text().splitlines()) == 55
 
 
-def test_scan_lattice_struts_tags_outputs_by_radius(
+def test_scan_lattice_struts_tags_outputs_by_radius_and_cap(
     strut_lattice, tmp_path: Path
 ) -> None:
-    """A radius sweep must not overwrite its own earlier passes."""
+    """A sweep varies two parameters, so both have to reach the filename."""
     output_dir = tmp_path / "scan"
-    for radius in (2, 3):
+    for radius, cap in ((2, 8), (3, 8), (3, 10.5)):
         mcp_server.scan_lattice_struts(
             str(strut_lattice.volume_path),
             str(strut_lattice.registered_json_path),
             str(output_dir),
             radius=radius,
+            cap_voxels=cap,
         )
 
     assert {path.name for path in output_dir.glob("*.csv")} == {
-        "strut_scan_r2.csv",
-        "strut_scan_r3.csv",
+        "strut_scan_r2_c8.csv",
+        "strut_scan_r3_c8.csv",
+        "strut_scan_r3_c10p5.csv",
     }
 
 
@@ -324,6 +325,7 @@ def test_scan_lattice_struts_tags_outputs_by_radius(
         ({"volume_path": "missing.npy"}, "volume file not found"),
         ({"registered_json_path": "lattice.txt"}, "must have a .json extension"),
         ({"radius": 0}, "radius must be a positive"),
+        ({"cap_voxels": 25}, "leaves no span to score"),
     ],
 )
 def test_scan_lattice_struts_errors(
@@ -425,4 +427,109 @@ def test_visualize_junction_overlay_errors(
         **keyword,
     )
     assert result.startswith("Error visualizing junction overlay:")
+    assert message in result
+
+
+def test_visualize_lattice_element_renders_a_strut(
+    strut_lattice, tmp_path: Path
+) -> None:
+    """The three projections and the measurement come back together, so a
+    candidate can be judged without re-running a scan to find its numbers."""
+    output_dir = tmp_path / "views"
+    strut = strut_lattice.missing_strut_id
+    result = mcp_server.visualize_lattice_element(
+        str(strut_lattice.volume_path),
+        str(strut_lattice.registered_json_path),
+        "strut",
+        strut,
+        str(output_dir),
+        radius=3,
+        cap_voxels=8,
+    )
+
+    assert "Error" not in result
+    assert "3 segments" in result and "MISSING" in result
+    written = sorted(path.name for path in output_dir.glob("*.png"))
+    assert written == [
+        f"strut_{strut}_r3_c8_proj_{axis}.png" for axis in ("x", "y", "z")
+    ]
+    assert all(str(output_dir / name) in result for name in written)
+
+
+def test_visualize_lattice_element_renders_a_junction(
+    synthetic_lattice, tmp_path: Path
+) -> None:
+    output_dir = tmp_path / "views"
+    result = mcp_server.visualize_lattice_element(
+        str(synthetic_lattice.volume_path),
+        str(synthetic_lattice.registered_json_path),
+        "junction",
+        0,
+        str(output_dir),
+        radius=3,
+    )
+
+    assert "Error" not in result
+    assert "junction 0" in result.lower()
+    assert "bright (present)" in result or "DARK (candidate)" in result
+    assert len(list(output_dir.glob("junction_0_r3_proj_*.png"))) == 3
+
+
+def test_visualize_lattice_element_agrees_with_the_scan_it_inspects(
+    strut_lattice, tmp_path: Path
+) -> None:
+    """An inspection tool that measured something else than the scan would send
+    an agent chasing disagreements that are its own fault."""
+    scan = mcp_server.scan_lattice_struts(
+        str(strut_lattice.volume_path),
+        str(strut_lattice.registered_json_path),
+        str(tmp_path / "scan"),
+        radius=3,
+        cap_voxels=8,
+    )
+    assert "Error" not in scan
+    summary = json.loads(
+        (tmp_path / "scan" / "strut_scan_r3_c8_summary.json").read_text()
+    )
+
+    for candidate in summary["candidates"]:
+        result = mcp_server.visualize_lattice_element(
+            str(strut_lattice.volume_path),
+            str(strut_lattice.registered_json_path),
+            "strut",
+            candidate["strut_id"],
+            str(tmp_path / "views"),
+            radius=3,
+            cap_voxels=8,
+        )
+        assert candidate["status"].upper() in result
+        for intensity in candidate["segment_intensities"]:
+            assert f"{intensity:.0f}" in result
+
+
+@pytest.mark.parametrize(
+    ("keyword", "message"),
+    [
+        ({"element": "node"}, 'element must be "junction" or "strut"'),
+        ({"element_id": 9999}, "strut id must be between"),
+        ({"radius": 0}, "radius must be a positive"),
+        ({"cap_voxels": 25}, "leaves no span to score"),
+    ],
+)
+def test_visualize_lattice_element_errors(
+    strut_lattice, tmp_path: Path, keyword: dict, message: str
+) -> None:
+    arguments = {
+        "volume_path": str(strut_lattice.volume_path),
+        "registered_json_path": str(strut_lattice.registered_json_path),
+        "element": "strut",
+        "element_id": 0,
+        "output_dir": str(tmp_path / "views"),
+        "radius": 3,
+        "cap_voxels": 8,
+        **keyword,
+    }
+
+    result = mcp_server.visualize_lattice_element(**arguments)
+    assert result.startswith("Error visualizing lattice element:")
     assert message in result

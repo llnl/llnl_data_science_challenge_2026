@@ -1,65 +1,68 @@
-"""Score every lattice strut against the CT volume with the same sphere probe
-the junction scan uses, and classify each strut as present, partial or missing.
+"""Score every lattice strut against the CT volume with a capped cylinder probe
+and classify each strut as present, partial or missing.
 
-The measurement is deliberately the junction detector's, moved onto the strut:
-take the brightest voxel within a sphere of ``radius`` around a point, and call
-the point dark when that maximum falls below the *full-volume* Otsu threshold.
-A strut is measured at several such points along its span, placed by recursive
-bisection -- ``n_bisections`` halvings give ``2**n_bisections - 1`` points at the
-fractions ``k / 2**n_bisections`` of the junction-to-junction line. One bisection
-is the midpoint; two are the quarter, half and three-quarter points.
+The statistic is still the junction detector's -- the brightest voxel in a
+region, cut against the *full-volume* Otsu threshold -- but the region is now a
+cylinder wrapped around the strut's own axis rather than a sphere at a point on
+it. Two ends of the cylinder are cut off by ``cap_voxels``, and what remains is
+tiled into abutting segments, each scored by its own maximum::
 
-Classification follows directly from how many of those points are dark:
+    n_bisections = 1:   -[==========]-        1 segment
+    n_bisections = 2:   -[===|===|===]-       3 segments
+    n_bisections = 3:   -[=|=|=|=|=|=|=]-     7 segments
 
-- **missing** -- every point dark. Nothing was found anywhere along the strut.
-- **partial** -- some but not all points dark. Material is present over part of
-  the span and absent over the rest, which is what a broken or partly-printed
-  strut looks like. It is evidence, not a confirmed defect. At one bisection
-  there is a single point, so this class cannot arise.
-- **present** -- no point dark.
+``-`` is the end cap, excluded from every segment; ``[...]`` is the scored span.
+``n`` bisections leave ``2**n - 1`` equal segments, so the count matches the
+sphere probe this replaces and reduces to one whole-cylinder segment at ``n=1``.
 
-Why the default is one bisection
---------------------------------
+Classification follows directly from how many segments are dark:
+
+- **missing** -- every segment dark. No material anywhere along the scored span.
+- **partial** -- some but not all segments dark. Material over part of the span
+  and none over the rest, which is what a broken or partly-printed strut looks
+  like. At one bisection there is a single segment, so this class cannot arise.
+- **present** -- no segment dark.
+
+Why the cap exists
+------------------
 Twelve struts meet at a junction of this lattice and the resulting blob stays
 bright when any one of them is absent, so a probe near an endpoint answers a
-question about the junction rather than the strut. Every bisection point is
-strictly interior, but they are not equally safe: the outermost sit at
-``1/2**n`` of the span, and the more of them there are the closer they crowd the
-junctions.
+question about the junction rather than the strut. The predecessor of this
+module handled that by sampling *points* placed by recursive bisection, which
+made the sampling radius carry two incompatible jobs at once:
 
-On the reference scan that crowding is fatal at two bisections and comfortable
-at one. Junction-local material reaches about 12 voxels out along an absent
-strut's own axis (33% of probes still lit at 6 voxels, 2.3% at 10, none at 14),
-while the registered lattice's residual x-drift needs a sampling radius of 7 or
-more before the flagged fraction stops climbing across the specimen (28% in the
-far-x band at radius 4, 0.80% at radius 8 against 0.33-0.58% elsewhere). Against
-a 55.8-voxel strut:
+- **Drift pushes the radius up.** The ``registered_jsons/`` alignment carries a
+  ~0.8% x-scale error, about 5.6 voxels of drift across the specimen, against
+  struts only ~4 voxels thick. Below radius 7 the residual reads as absence and
+  the flagged fraction climbs across the specimen (27.6% in the far-x band at
+  radius 4, 0.80% at radius 8).
+- **Junction reach pushes it down.** Material belonging to a junction and its
+  other eleven struts extends about 12 voxels along an absent strut's own axis
+  (33% of probes still lit at 6 voxels, 2.3% at 10, none at 14). A sphere whose
+  centre sits closer than that to a junction gets lit by the junction.
 
-- **one bisection** puts its single point 27.9 voxels from either junction, so a
-  radius-8 sphere spans 19.9 to 35.9 along the strut and clears the junctions'
-  12-voxel reach by about 8 voxels at both ends. Both demands are satisfied.
-- **two bisections** put the outer points 14.0 voxels out, which would need a
-  radius below about 2 to stay clear. No radius satisfies both demands.
+With a sphere those demands collide: at two bisections the outer points sit 14.0
+voxels from a junction and would need a radius below about 2, while the drift
+needs 7 or more. No radius satisfied both, so the bisection count was pinned to
+one and the ``partial`` class was structurally unreachable.
 
-The consequence at two bisections is that an outer point on a genuinely absent
-strut is often lit by the junction it points at, so the strut reads *partial*
-rather than *missing*. Measured on the 87 struts an independent cylinder
-detector found wholly empty: at radius 4, 84 of 87 read all-dark; at radius 8,
-only 21 do, while 60 read dark at the midpoint with exactly one outer point
-bright. The midpoint was dark on all 87 at every radius -- which is the
-measurement that makes one bisection the safe default.
+The cap breaks the collision by giving each demand its own parameter. ``radius``
+is measured *perpendicular* to the strut axis, where only the drift matters;
+``cap_voxels`` is measured *along* it, where only the junction reach matters.
+Setting ``cap_voxels`` past the junction's reach clears the bleed at any radius,
+so the span can be subdivided as finely as the geometry allows and a break that
+misses the strut's midpoint becomes visible.
 
-What this statistic cannot see
-------------------------------
-A maximum over a sphere saturates: a strut that is present but *thin* still has
-a bright voxel at every sample point and reads as present. Thin struts are a
-separate defect class and this module does not detect them.
+What this statistic still cannot see
+------------------------------------
+A maximum saturates: a strut that is present but *thin* still has a bright voxel
+in every segment and reads as present. Thin struts are a separate defect class
+and this module does not detect them.
 
-At one bisection the scan is also blind to a **partial** strut: a break that
-does not cover the midpoint leaves the single sample point bright, and the strut
-reads present. Recovering that sensitivity means raising ``n_bisections``, which
-on this scan cannot be done without the junction bleed above. It needs a refit
-registration that permits a narrower probe, not a different threshold.
+A break confined to a cap also reads as present, since the caps are scored by
+nothing. That is the price of clearing the junction bleed, and it is why
+``cap_voxels`` should be set to the smallest value that clears it rather than
+generously.
 
 Nothing here knows anything about a particular specimen. Each strut carries the
 merged junction ids of its two endpoints, which is how a caller attributes a
@@ -77,15 +80,20 @@ import numpy as np
 from skimage.filters import threshold_otsu
 
 from junction_scan import band_stats
-from overlay_registered_nodes_histogram import sample_volume_at_nodes
 from strut_center_intensity_histogram import load_lattice
 
-# Matches the junction scan's default, and for the same reason: it is the
-# smallest radius at which the reference scan's residual registration drift stops
-# producing a gradient in the flagged fraction across the specimen. See the
-# module docstring for what it costs at the outer sample points.
+# Perpendicular to the strut axis, so this absorbs the residual registration
+# drift and nothing else. Matches the junction scan's default for the same
+# reason: it is the smallest radius at which the reference scan's drift stops
+# producing a gradient in the flagged fraction across the specimen.
 DEFAULT_RADIUS_VOXELS = 8
-DEFAULT_BISECTIONS = 1
+
+# Along the strut axis, so this clears the junction's own material and nothing
+# else. Junction-local material reached 0% of probes at 14 voxels on the
+# reference scan; see the module docstring.
+DEFAULT_CAP_VOXELS = 14
+
+DEFAULT_BISECTIONS = 2
 
 STATUS_PRESENT = "present"
 STATUS_PARTIAL = "partial"
@@ -102,27 +110,30 @@ class StrutScanResult:
     Attributes:
         strut_junction_ids: (S, 2) merged junction ids joined by each strut.
         positions_xyz: (N, 3) merged junction positions as [x, y, z].
-        sample_xyz: (S, P, 3) the P sample points along each strut, unrounded.
-        intensities: (S, P) brightest voxel within ``radius`` of each point.
-        point_dark: (S, P) True where a point's intensity fell below ``threshold``.
-        n_dark_points: (S,) how many of the P points are dark.
-        missing: (S,) True where every point is dark.
-        partial: (S,) True where some but not all points are dark.
+        segment_centers_xyz: (S, P, 3) centre of each scored segment, unrounded.
+        intensities: (S, P) brightest voxel inside each segment.
+        segment_dark: (S, P) True where a segment's maximum fell below
+            ``threshold``.
+        n_dark_segments: (S,) how many of the P segments are dark.
+        missing: (S,) True where every segment is dark.
+        partial: (S,) True where some but not all segments are dark.
         threshold: The full-volume Otsu threshold that darkness was cut against.
-        radius: Sampling sphere radius in voxels.
+        radius: Cylinder radius in voxels, perpendicular to the strut axis.
+        cap_voxels: Length trimmed from each end of the strut before scoring.
         n_bisections: Number of halvings; P is ``2**n_bisections - 1``.
     """
 
     strut_junction_ids: np.ndarray
     positions_xyz: np.ndarray
-    sample_xyz: np.ndarray
+    segment_centers_xyz: np.ndarray
     intensities: np.ndarray
-    point_dark: np.ndarray
-    n_dark_points: np.ndarray
+    segment_dark: np.ndarray
+    n_dark_segments: np.ndarray
     missing: np.ndarray
     partial: np.ndarray
     threshold: float
     radius: int
+    cap_voxels: float
     n_bisections: int
 
     @property
@@ -130,12 +141,12 @@ class StrutScanResult:
         return len(self.strut_junction_ids)
 
     @property
-    def n_points(self) -> int:
-        return self.sample_xyz.shape[1]
+    def n_segments(self) -> int:
+        return self.segment_centers_xyz.shape[1]
 
     @property
     def centers_xyz(self) -> np.ndarray:
-        """(S, 3) midpoint of each strut, which is always a sample point."""
+        """(S, 3) midpoint of each strut, which the segments are symmetric about."""
         start = self.positions_xyz[self.strut_junction_ids[:, 0]]
         end = self.positions_xyz[self.strut_junction_ids[:, 1]]
         return (start + end) / 2.0
@@ -149,61 +160,178 @@ class StrutScanResult:
         return labels
 
 
-def strut_sample_points(
-    start_xyz: np.ndarray, end_xyz: np.ndarray, n_bisections: int
-) -> np.ndarray:
-    """Place ``2**n_bisections - 1`` points along each strut by recursive halving.
+def segment_bounds(
+    lengths: np.ndarray, cap_voxels: float, n_bisections: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Axial start and end of each scored segment, measured from the start junction.
 
-    One bisection splits the span once and leaves its midpoint; two split each
-    half again and leave the quarter, half and three-quarter points; in general
-    the points sit at ``k / 2**n_bisections`` for ``k = 1 .. 2**n - 1``. The
-    endpoints are never sampled -- see the module docstring for why.
+    The scored span runs from ``cap_voxels`` to ``length - cap_voxels`` and is
+    tiled into ``2**n_bisections - 1`` equal abutting segments.
 
     Args:
-        start_xyz: (S, 3) strut start points as [x, y, z].
-        end_xyz: (S, 3) strut end points as [x, y, z].
+        lengths: (S,) junction-to-junction length of each strut in voxels.
+        cap_voxels: Length excluded at each end.
         n_bisections: Number of halvings, at least 1.
 
     Returns:
-        An (S, 2**n_bisections - 1, 3) array of sample points, ordered from the
-        start point towards the end point.
+        (lower, upper), each (S, 2**n_bisections - 1), in voxels along the axis.
 
     Raises:
-        ValueError: If ``n_bisections`` is less than 1.
+        ValueError: If ``n_bisections`` is less than 1, ``cap_voxels`` is
+            negative, or any strut is too short to leave a scored span.
     """
     if n_bisections < 1:
         raise ValueError(f"n_bisections must be at least 1, got {n_bisections}")
+    if cap_voxels < 0:
+        raise ValueError(f"cap_voxels must not be negative, got {cap_voxels}")
 
-    divisions = 2**n_bisections
-    fractions = np.arange(1, divisions, dtype=float) / divisions
-    return start_xyz[:, None, :] + fractions[None, :, None] * (
-        end_xyz - start_xyz
-    )[:, None, :]
+    spans = lengths - 2.0 * cap_voxels
+    if np.any(spans <= 0):
+        shortest = int(np.argmin(lengths))
+        raise ValueError(
+            f"cap_voxels={cap_voxels} leaves no span to score on strut {shortest}, "
+            f"which is {lengths[shortest]:.1f} voxels long; cap_voxels must be "
+            f"below half the shortest strut ({lengths.min() / 2:.1f})"
+        )
+
+    n_segments = 2**n_bisections - 1
+    edges = np.arange(n_segments + 1, dtype=float) / n_segments
+    starts = cap_voxels + spans[:, None] * edges[None, :-1]
+    ends = cap_voxels + spans[:, None] * edges[None, 1:]
+    return starts, ends
+
+
+def segment_maxima(
+    volume: np.ndarray,
+    start_xyz: np.ndarray,
+    unit_xyz: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    radius: int,
+    strut_id: int,
+) -> np.ndarray:
+    """Brightest voxel inside each segment of one strut's capped cylinder.
+
+    A voxel belongs to segment ``k`` when its axial coordinate along the strut
+    falls in ``[lower[k], upper[k])`` and its perpendicular distance from the
+    axis is at most ``radius``. Only the cylinder's padded bounding box is
+    examined, which is what keeps this affordable per strut.
+
+    Raises:
+        ValueError: If a segment contains no voxels, which means the radius or
+            the cap has collapsed the region being measured.
+    """
+    z_size, y_size, x_size = volume.shape
+    axis_ends = np.stack(
+        [start_xyz + lower[0] * unit_xyz, start_xyz + upper[-1] * unit_xyz]
+    )
+    shape_xyz = np.array([x_size, y_size, z_size])
+    lo = np.clip(np.floor(axis_ends.min(axis=0) - radius), 0, shape_xyz - 1)
+    hi = np.clip(np.ceil(axis_ends.max(axis=0) + radius) + 1, 1, shape_xyz)
+    (x0, y0, z0), (x1, y1, z1) = lo.astype(int), hi.astype(int)
+
+    # Axial and radial coordinates are separable in x, y and z, so broadcasting
+    # three 1-D offset arrays covers the box without materializing a coordinate
+    # array per voxel.
+    dx = np.arange(x0, x1, dtype=float)[None, None, :] - start_xyz[0]
+    dy = np.arange(y0, y1, dtype=float)[None, :, None] - start_xyz[1]
+    dz = np.arange(z0, z1, dtype=float)[:, None, None] - start_xyz[2]
+
+    axial = dx * unit_xyz[0] + dy * unit_xyz[1] + dz * unit_xyz[2]
+    perpendicular_squared = (dx * dx + dy * dy + dz * dz) - axial * axial
+
+    box = volume[z0:z1, y0:y1, x0:x1]
+    within_radius = perpendicular_squared <= float(radius) ** 2
+
+    maxima = np.empty(len(lower), dtype=volume.dtype)
+    for segment, (low, high) in enumerate(zip(lower, upper)):
+        # The last segment takes its upper edge inclusively so the cylinder's far
+        # end is not left unscored by a floating-point hair.
+        above = axial >= low
+        below = axial <= high if segment == len(lower) - 1 else axial < high
+        inside = within_radius & above & below
+        if not inside.any():
+            raise ValueError(
+                f"segment {segment} of strut {strut_id} contains no voxels at "
+                f"radius {radius}; the radius or cap_voxels has collapsed the "
+                f"region being measured"
+            )
+        maxima[segment] = box[inside].max()
+    return maxima
+
+
+def score_strut(
+    volume: np.ndarray,
+    start_xyz: np.ndarray,
+    end_xyz: np.ndarray,
+    radius: int = DEFAULT_RADIUS_VOXELS,
+    cap_voxels: float = DEFAULT_CAP_VOXELS,
+    n_bisections: int = DEFAULT_BISECTIONS,
+    strut_id: int = 0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Score one strut's capped cylinder, without touching the rest of the lattice.
+
+    This is what an inspection tool needs: re-running a whole scan to look at a
+    single candidate costs minutes and produces numbers already on disk.
+
+    Args:
+        volume: 3D CT volume in (z, y, x) order.
+        start_xyz: First endpoint junction's [x, y, z] position.
+        end_xyz: Second endpoint junction's [x, y, z] position.
+        radius: Cylinder radius in voxels, perpendicular to the strut axis.
+        cap_voxels: Length excluded at each end, along the axis.
+        n_bisections: Number of halvings of the scored span.
+        strut_id: Only used to name the strut in error messages.
+
+    Returns:
+        (intensities, lower, upper), each of length ``2**n_bisections - 1``: the
+        brightest voxel in each segment and the segment's axial bounds in voxels
+        from the start junction.
+    """
+    if radius < 1:
+        raise ValueError(f"radius must be a positive number of voxels, got {radius}")
+
+    start = np.asarray(start_xyz, dtype=float)
+    end = np.asarray(end_xyz, dtype=float)
+    direction = end - start
+    length = float(np.linalg.norm(direction))
+    if length == 0:
+        raise ValueError(f"strut {strut_id} has coincident endpoints")
+
+    lower, upper = segment_bounds(np.array([length]), cap_voxels, n_bisections)
+    intensities = segment_maxima(
+        volume, start, direction / length, lower[0], upper[0], radius, strut_id
+    )
+    return intensities, lower[0], upper[0]
 
 
 def scan_struts(
     volume: np.ndarray,
     registered_json_path: str | Path,
     radius: int = DEFAULT_RADIUS_VOXELS,
+    cap_voxels: float = DEFAULT_CAP_VOXELS,
     n_bisections: int = DEFAULT_BISECTIONS,
 ) -> StrutScanResult:
-    """Sample every strut at its bisection points and classify each one.
+    """Score every strut's capped cylinder segment by segment and classify it.
 
     Args:
         volume: 3D CT volume in (z, y, x) order.
         registered_json_path: Lattice JSON already registered to this volume's
             voxel coordinates. Un-registered/nominal JSONs do not line up.
-        radius: Sampling sphere radius in voxels. Wide enough to absorb residual
-            registration drift, narrow enough that the outermost sample points
-            do not reach the junction blobs.
-        n_bisections: Number of halvings of each strut's span.
+        radius: Cylinder radius in voxels, perpendicular to the strut axis. Wide
+            enough to absorb residual registration drift.
+        cap_voxels: Length excluded at each end of the strut, along its axis.
+            Large enough to clear the endpoint junctions' own material.
+        n_bisections: Number of halvings of the scored span; it is divided into
+            ``2**n_bisections - 1`` segments.
 
     Returns:
         A ``StrutScanResult``.
 
     Raises:
-        ValueError: If ``volume`` is not 3D, ``radius`` is not positive, or
-            ``n_bisections`` is less than 1.
+        ValueError: If ``volume`` is not 3D, ``radius`` is not positive,
+            ``n_bisections`` is less than 1, ``cap_voxels`` is negative or
+            leaves no span on some strut, or a segment ends up empty.
     """
     if volume.ndim != 3:
         raise ValueError(f"expected a 3D volume, found {volume.ndim} dimensions")
@@ -215,29 +343,46 @@ def scan_struts(
     positions_xyz, strut_junction_ids, _ = load_lattice(Path(registered_json_path))
     start_xyz = positions_xyz[strut_junction_ids[:, 0]]
     end_xyz = positions_xyz[strut_junction_ids[:, 1]]
-    sample_xyz = strut_sample_points(start_xyz, end_xyz, n_bisections)
 
-    n_struts, n_points = sample_xyz.shape[:2]
-    flat_intensities, _ = sample_volume_at_nodes(
-        volume, sample_xyz.reshape(-1, 3), radius
+    directions = end_xyz - start_xyz
+    lengths = np.linalg.norm(directions, axis=1)
+    if np.any(lengths == 0):
+        raise ValueError("degenerate strut with coincident endpoints in lattice JSON")
+    unit_xyz = directions / lengths[:, None]
+
+    lower, upper = segment_bounds(lengths, cap_voxels, n_bisections)
+    segment_centers_xyz = (
+        start_xyz[:, None, :] + ((lower + upper) / 2.0)[:, :, None] * unit_xyz[:, None, :]
     )
-    intensities = flat_intensities.reshape(n_struts, n_points)
 
-    point_dark = intensities < threshold
-    n_dark_points = point_dark.sum(axis=1)
-    missing = n_dark_points == n_points
+    intensities = np.empty(lower.shape, dtype=volume.dtype)
+    for strut in range(len(strut_junction_ids)):
+        intensities[strut] = segment_maxima(
+            volume,
+            start_xyz[strut],
+            unit_xyz[strut],
+            lower[strut],
+            upper[strut],
+            radius,
+            strut,
+        )
+
+    segment_dark = intensities < threshold
+    n_dark_segments = segment_dark.sum(axis=1)
+    missing = n_dark_segments == segment_dark.shape[1]
 
     return StrutScanResult(
         strut_junction_ids=strut_junction_ids,
         positions_xyz=positions_xyz,
-        sample_xyz=sample_xyz,
+        segment_centers_xyz=segment_centers_xyz,
         intensities=intensities,
-        point_dark=point_dark,
-        n_dark_points=n_dark_points,
+        segment_dark=segment_dark,
+        n_dark_segments=n_dark_segments,
         missing=missing,
-        partial=(n_dark_points > 0) & ~missing,
+        partial=(n_dark_segments > 0) & ~missing,
         threshold=threshold,
         radius=int(radius),
+        cap_voxels=float(cap_voxels),
         n_bisections=int(n_bisections),
     )
 
@@ -270,8 +415,9 @@ def summarize_strut_scan(result: StrutScanResult, n_bands: int = 4) -> dict:
             "y": int(round(float(centers[s, 1]))),
             "z": int(round(float(centers[s, 2]))),
             "status": STATUS_MISSING if result.missing[s] else STATUS_PARTIAL,
-            "n_dark_points": int(result.n_dark_points[s]),
-            "point_intensities": [float(v) for v in result.intensities[s]],
+            "n_dark_segments": int(result.n_dark_segments[s]),
+            "segment_dark": [bool(d) for d in result.segment_dark[s]],
+            "segment_intensities": [float(v) for v in result.intensities[s]],
         }
         for s in np.flatnonzero(flagged)
     ]
@@ -281,8 +427,9 @@ def summarize_strut_scan(result: StrutScanResult, n_bands: int = 4) -> dict:
     n_partial = int(result.partial.sum())
     return {
         "radius": result.radius,
+        "cap_voxels": result.cap_voxels,
         "n_bisections": result.n_bisections,
-        "n_points_per_strut": result.n_points,
+        "n_segments_per_strut": result.n_segments,
         "otsu_threshold": result.threshold,
         "n_struts": int(n_struts),
         "n_junctions": int(len(result.positions_xyz)),
@@ -309,7 +456,7 @@ def summarize_strut_scan(result: StrutScanResult, n_bands: int = 4) -> dict:
 
 
 CSV_HEADER = (
-    "strut_id,junction0,junction1,x,y,z,n_dark_points,n_points,"
+    "strut_id,junction0,junction1,x,y,z,n_dark_segments,n_segments,"
     "min_intensity,status"
 )
 
@@ -335,7 +482,7 @@ def write_strut_csv(csv_path: str | Path, result: StrutScanResult) -> Path:
             f.write(
                 f"{strut},{result.strut_junction_ids[strut, 0]},"
                 f"{result.strut_junction_ids[strut, 1]},{x},{y},{z},"
-                f"{result.n_dark_points[strut]},{result.n_points},"
+                f"{result.n_dark_segments[strut]},{result.n_segments},"
                 f"{minimum[strut]},{status[strut]}\n"
             )
     return path

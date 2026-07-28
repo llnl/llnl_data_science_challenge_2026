@@ -63,13 +63,19 @@ from strut_center_intensity_histogram import load_lattice
 
 CANDIDATE_COLOR = (255, 0, 0)
 
+# Marker walls are drawn hollow so the material inside stays visible. Two voxels
+# is thin enough to see past and thick enough to survive the downsampling a
+# preview animation applies.
+MARKER_THICKNESS_VOXELS = 2
+
 # Axis 0 of the volume is z, axis 1 is y, axis 2 is x, while positions are
-# [x, y, z]. Slicing along volume axis ``a`` therefore fixes position column
-# ``_DEPTH_COLUMN[a]`` and leaves ``_PLOT_COLUMNS[a]`` as the image's
-# (horizontal, vertical) axes.
+# [x, y, z]. Slicing or projecting along volume axis ``a`` therefore fixes
+# position column ``_DEPTH_COLUMN[a]`` and leaves ``PLOT_COLUMNS[a]`` as the
+# image's (horizontal, vertical) axes. The latter two are public because
+# ``element_views`` draws in the same convention and must not diverge from it.
 _DEPTH_COLUMN = (2, 1, 0)
-_PLOT_COLUMNS = ((0, 1), (0, 2), (1, 2))
-_AXIS_LABELS = (("x", "y"), ("x", "z"), ("y", "z"))
+PLOT_COLUMNS = ((0, 1), (0, 2), (1, 2))
+AXIS_LABELS = (("x", "y"), ("x", "z"), ("y", "z"))
 
 
 @dataclass(frozen=True)
@@ -435,7 +441,7 @@ def save_slice_overlay_with_radius(
             f"index must be between 0 and {volume.shape[axis] - 1} for axis {axis}"
         )
 
-    horizontal, vertical = _PLOT_COLUMNS[axis]
+    horizontal, vertical = PLOT_COLUMNS[axis]
     depth = np.abs(result.positions_xyz[:, depth_column] - index)
     visible = depth <= result.radius
     in_plane_radius = np.sqrt(np.maximum(result.radius**2 - depth**2, 0.0))
@@ -468,7 +474,7 @@ def save_slice_overlay_with_radius(
                 axes.plot([], [], color=color, label=f"{label} ({int(mask.sum())})")
         if visible.any():
             axes.legend(loc="upper right")
-        horizontal_label, vertical_label = _AXIS_LABELS[axis]
+        horizontal_label, vertical_label = AXIS_LABELS[axis]
         axes.set_title(
             f"Slice {'zyx'[axis]}={index} with radius-{result.radius} "
             f"sampling spheres to scale"
@@ -497,7 +503,7 @@ def save_mip_overlay_with_status(
     if axis not in (0, 1, 2):
         raise ValueError("axis must be 0, 1, or 2")
 
-    horizontal, vertical = _PLOT_COLUMNS[axis]
+    horizontal, vertical = PLOT_COLUMNS[axis]
     path = Path(output_path).expanduser()
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -525,7 +531,7 @@ def save_mip_overlay_with_status(
                 label=f"candidate ({int(result.dark.sum())})",
             )
         axes.legend(loc="upper right")
-        horizontal_label, vertical_label = _AXIS_LABELS[axis]
+        horizontal_label, vertical_label = AXIS_LABELS[axis]
         axes.set_title(
             f"{'zyx'[axis]} max-intensity projection with junctions overlaid "
             f"(radius {result.radius})"
@@ -540,14 +546,23 @@ def save_mip_overlay_with_status(
 
 
 def save_marked_tiff(
-    volume: np.ndarray, result: JunctionScanResult, output_path: str | Path
+    volume: np.ndarray,
+    result: JunctionScanResult,
+    output_path: str | Path,
+    thickness: int = MARKER_THICKNESS_VOXELS,
 ) -> Path:
-    """Burn a red sphere into each candidate's location in an RGB TIFF stack.
+    """Outline each candidate's sampling sphere in an RGB TIFF stack.
 
-    Markers are drawn at the sampling radius, so each painted sphere is exactly
-    the neighborhood whose brightest voxel produced the flag. A marker that
+    Markers are drawn at the sampling radius, so each one bounds exactly the
+    neighborhood whose brightest voxel produced the flag. A marker that
     swallowed more than was measured would invite reading absence into voxels
     the detector never looked at.
+
+    They are drawn hollow, as a shell of ``thickness`` voxels, because a solid
+    sphere paints over the very voxels the picture exists to show: the question
+    asked of this stack is whether there is material where a candidate sits, and
+    a filled marker answers it by covering it up. Slices read as rings, filling
+    in only where the plane clips a sphere's cap.
 
     The RGB copy is three uint8 channels of a full volume, so this costs roughly
     three bytes per input voxel in peak memory.
@@ -561,6 +576,7 @@ def save_marked_tiff(
         result.voxel_xyz[result.dark],
         result.radius,
         CANDIDATE_COLOR,
+        thickness=thickness,
     )
     tifffile.imwrite(path, rgb_volume, photometric="rgb", bigtiff=True)
     return path

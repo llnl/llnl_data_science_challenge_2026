@@ -33,6 +33,7 @@ EXPECTED_TOOLS = {
     "segment_ct_dataset",
     "skeletonize",
     "visualize_junction_overlay",
+    "visualize_lattice_element",
     "visualize_slice",
 }
 

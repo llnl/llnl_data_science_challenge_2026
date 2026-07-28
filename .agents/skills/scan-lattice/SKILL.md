@@ -36,8 +36,8 @@ the scan.
 ## MCP server
 
 Every tool named on this page — `convert_tiff_volume`, `scan_lattice_junctions`,
-`scan_lattice_struts`, `visualize_junction_overlay` — is served by the
-**ct-segmentation** MCP server
+`scan_lattice_struts`, `visualize_junction_overlay`, `visualize_lattice_element`
+— is served by the **ct-segmentation** MCP server
 (`src/mcp_server.py`, registered in `.mcp.json` for Claude Code and
 `~/.codex/config.toml` for Codex). The server also carries `visualize_slice`,
 which renders a slice with no overlay, for when you want the image without the
@@ -123,17 +123,27 @@ strut phase on a MAJOR misalignment.
    report what you set aside and why. Dropping junctions because they are
    inconvenient turns a systematic finding into a silent one.
 
-7. **Verify each surviving candidate by eye.** For each, call
-   `visualize_junction_overlay` with `mode="slice"` and `slice_index` set to
-   that candidate's `z`. Confirm the red circle covers empty space while its
-   neighbors show material. Drop any candidate that plainly sits on material and
-   say why.
+7. **Verify a sample of the surviving candidates by eye.** For each one in the
+   sample, call `visualize_lattice_element` with `element="junction"` and the
+   candidate's merged id. You get three projections of the sphere's own
+   neighbourhood, which is what settles a candidate — a single slice through a
+   junction can miss material sitting a few voxels off the plane. Confirm the
+   circle covers empty space while the surrounding struts show material. Drop
+   any candidate that plainly sits on material and say why.
 
-8. **Scan the struts, once.** Call `scan_lattice_struts` at **the same radius
-   you settled on for the junction report**. There is no strut radius sweep and
-   no second free parameter to tune: the radius is chosen from the junction
-   slice overlays, and the strut scan inherits it. Each strut is sampled at its
-   midpoint alone, which the tool fixes.
+   How many to look at, and how to pick them: see *How much to look at*.
+
+8. **Sweep the strut parameters.** `scan_lattice_struts` has two: `radius` and
+   `cap_voxels`. Start at the radius you settled on for junctions, then vary
+   **one at a time**. Outputs are tagged with both numbers, so nothing
+   overwrites.
+
+   Set the cap by *measuring* the junction bleed, not by guessing it: the struts
+   incident to the junctions you just reported missing are known to be absent,
+   so the smallest cap at which they all read `missing` is the cap that clears
+   the bleed. This is why the strut phase runs after the junction phase and not
+   beside it. See *Choosing the strut parameters* below for the full method,
+   the fallback when no junction was found missing, and what to record.
 
 9. **Account for the systematic region at strut level.** Each row of the strut
    CSV carries the merged ids of its two endpoint junctions. A flagged strut
@@ -148,7 +158,36 @@ strut phase on a MAJOR misalignment.
    consistency check on the junction result, not twelve extra defects. The
    isolated ones are the strut-level finding.
 
-10. **Write `lattice_scan_report.md`** in the output directory (see Report).
+10. **Triage a sample of the `partial`s**, and of the isolated missing struts.
+    Take an element view of each one in the sample (*How much to look at*). A
+    partial is evidence, not a verdict, and two different things produce it —
+    see *Reading a partial* below.
+
+11. **Write `lattice_scan_report.md`** in the output directory (see Report).
+
+## How much to look at
+
+Looking is how a candidate is settled, but looking at *every* candidate is not
+what makes a result sound, and on a scan with hundreds of flags it is not
+possible. Verify a sample and state what the sample was. The same rule applies
+to junction candidates, to isolated missing struts, and to `partial`s:
+
+- **Ten or fewer of a kind — look at all of them.** Small sets are cheap, and
+  one wrong flag is a large fraction of the finding.
+- **More than ten — look at at least ten**, chosen rather than taken off the top
+  of the CSV. Spread them across the specimen (both ends of the drift axis, more
+  than one octant) and include the borderline cases, where a misclassification
+  is most likely: for junctions the dark ones with the highest intensity, for
+  struts the `partial`s with only one dark segment. A sample drawn from one
+  corner tests one corner.
+- **A failure in the sample is a result about the whole set, not about one row.**
+  If a sampled candidate plainly sits on material, the parameters or the region
+  attribution are wrong for everything flagged the same way. Say so, fix it, and
+  re-scan — do not drop the row and keep the total.
+
+Report the sample: how many of each kind you viewed, out of how many, how you
+chose them, and what they showed. A count backed by a stated sample is a
+measurement; a count backed by "spot-checked" is not.
 
 ## Classification
 
@@ -195,52 +234,173 @@ account for them separately from the rest of the dark set in the report.
 
 ## Struts
 
-`scan_lattice_struts` samples each strut at the **midpoint** of its
-junction-to-junction span, with the same sphere probe and the same full-volume
-Otsu threshold the junction scan uses. A strut is **missing** when that point is
-dark. There is one sample point and one class; the tool fixes this and you
-cannot change it.
+`scan_lattice_struts` wraps a **cylinder** of `radius` around each strut's axis,
+cuts `cap_voxels` off each end, divides what remains into **three** abutting
+segments, and takes the brightest voxel in each. A segment is dark when that
+maximum falls below the same full-volume Otsu threshold the junction scan uses:
 
-The midpoint is used because it is the only placement that works. A probe near a
-strut's end measures its junction, whose material stays bright when any one of
-its twelve struts is absent. On the reference scan junction-local material
-reaches about 12 voxels along an absent strut's own axis, while the registration
-drift needs a sampling radius of 7 or more. Against a 55.8-voxel strut the
-midpoint sits 27.9 voxels from either junction, so a radius-8 sphere clears both
-by about 8 voxels. Quarter-span points sit 14 voxels out and would need a radius
-below 2 — no radius satisfies both demands there.
+```
+-[===|===|===]-      - = cap, not scored      [...] = the scored span
+```
+
+| Dark segments | Class |
+|---|---|
+| all three | `missing` |
+| some but not all | `partial` |
+| none | `present` |
+
+The segment count is fixed at three by the tool. The two parameters you do
+control do genuinely separate jobs, and that separation is the whole reason for
+the shape:
+
+- **`radius` is perpendicular to the axis**, so it only ever answers the
+  registration drift. Too small and correctly-printed struts read absent because
+  the lattice sits slightly off them; the symptom is a flagged fraction climbing
+  along one axis.
+- **`cap_voxels` is along the axis**, so it only ever answers the junction
+  reach. Twelve struts meet at a junction and the blob stays bright when any one
+  is absent, so a segment reaching into it reports on the junction instead of
+  the strut. On the reference scan that material extends about 12 voxels along
+  an absent strut's own axis.
+
+Because they act on different axes, you can clear the junction bleed without
+narrowing the probe. The sphere probe this replaced could not: its single radius
+had to satisfy both demands at once, no value did, and it was pinned to one
+sample point at the midpoint with the `partial` class unreachable.
 
 | Signal | Reading |
 |---|---|
 | `missing`, endpoint junction inside a systematic region | Belongs to that region. Report the count; it is not a separate defect. |
 | `missing`, endpoint junction reported missing | Corroboration of the junction finding, not an independent defect. |
 | `missing`, isolated | A missing strut. This is the reportable strut-level defect. |
-| Missing fraction climbing steadily along one axis | The radius is too small for the drift, exactly as at junction level. Go back to the junction overlays. |
+| `partial` | Evidence, not a verdict. Triage it — see below. |
+| Missing fraction climbing steadily along one axis | The radius is too small for the drift, exactly as at junction level. |
+| Many absent-looking struts reading `partial` rather than `missing` | The cap is too small and the junctions are bleeding into the end segments. |
 
-Two blind spots, which the report must state rather than let a clean result
-imply were checked:
+One blind spot the report must state rather than let a clean result imply was
+checked: **a thin strut reads present.** The statistic is a maximum, so a strut
+printed under-thickness still has a bright voxel in every segment. This scan
+bounds *absence* and under-thickness is a separate defect class it does not see.
 
-- **A thin strut reads present.** The statistic is a maximum over a sphere, so a
-  strut that is printed under-thickness still has a bright voxel at its
-  midpoint.
-- **A partial strut reads present.** A break that does not cover the midpoint
-  leaves the sample point bright. The scan therefore bounds *absence*, not
-  integrity. The summary JSON reports `n_partial`, but at one sample point that
-  count is structurally zero — check `n_points_per_strut` before reading
-  anything into it, and never report it as evidence that no breaks exist.
+### Reading a partial
 
-There is no strut-level image tool. Verify a strut candidate by taking a
-`visualize_junction_overlay` slice at its `z` — the strut runs between two of
-the circles you can see — and by checking that the junction scan's own numbers
-for its two endpoints are consistent with what the strut result claims.
+Two different things put a strut in this class, and an element view tells them
+apart:
 
-## Choosing the radius
+- **Junction bleed** — an *end* segment is bright and the rest dark, because the
+  cap did not clear the endpoint junction's material. This is a probe artifact:
+  the strut is really absent. Fix it by raising `cap_voxels`, and check that the
+  strut moves to `missing`.
+- **A real break** — material over part of the span and none over the rest, with
+  the bright part not hugging a junction. This is the defect class the capped
+  cylinder exists to recover.
 
-The radius exists to absorb residual registration error, and it is the only free
-parameter here — one number, chosen once at junction level and reused for
-struts. Too small and correctly-placed material is missed because the lattice
-sits slightly off it; too large and the probe reaches neighbouring
-struts and hides a real absence.
+If raising the cap converts a partial to missing, it was bleed. If it survives a
+cap that visibly clears both junctions, report it as a break candidate.
+
+## Choosing the strut parameters
+
+A count is not evidence for a parameter — it is what the parameter produces. So
+neither parameter is chosen by picking the number that gives an agreeable answer.
+The cap has a **measurement** that fixes it, described first; the radius is
+chosen from images.
+
+### The cap: measure the bleed with struts you already know are absent
+
+The cap exists to clear the endpoint junctions' material, so setting it needs to
+know how far that material reaches. You can measure that on this specimen rather
+than assume it, using struts whose answer you already know.
+
+**A junction goes dark only when every incident strut is absent.** So for any
+junction the junction phase reported missing, all twelve of its struts are
+*known* absent, and every one of them must read `missing`. Any that read
+`partial` are being lit by their own junction — which makes them a direct
+readout of how far the bleed reaches, not a proxy for it.
+
+The method:
+
+1. **Take the struts incident to the missing junctions you found in step 6.**
+   Get their ids from the strut CSV: any row whose `junction0` or `junction1` is
+   one of those junctions. A degree-12 junction contributes 12 struts.
+2. **Run `scan_lattice_struts` at increasing `cap_voxels`**, holding the radius
+   at the junction phase's value. A ladder like 6, 8, 10, 12, 14, 16, 20 is
+   enough; outputs are tagged by both parameters so nothing overwrites.
+3. **Count how many of those known-absent struts read `missing`** at each cap.
+   The count climbs with the cap and then saturates at all of them.
+4. **The cap is the smallest value where they all read `missing`.** Below it the
+   junctions are still bleeding into the end segments; above it you are only
+   giving up span.
+
+Worked on the reference scan (`0point5dash1`, 24 struts incident to two
+confirmed missing junctions, radius 8) — **as an illustration of the method, not
+values to reuse**:
+
+| `cap_voxels` | 6 | 8 | 10 | 12 | **14** | 16 | 20 |
+|---|---|---|---|---|---|---|---|
+| known-absent struts reading `missing` | 3/24 | 7/24 | 13/24 | 21/24 | **24/24** | 24/24 | 24/24 |
+| total `partial` | 128 | 112 | 74 | 38 | **23** | 18 | 10 |
+
+14 is the answer there. Note what the `partial` row would have told you on its
+own: it falls monotonically, so "fewest partials" would have chosen cap 20 and
+thrown away a third of the scored span for nothing. **The saturation point is
+the criterion, not the partial count.**
+
+**Do not go past it.** Every voxel of cap is span that stops being scored, and a
+break sitting inside a cap is invisible. A larger cap looks better on every
+count in the table while quietly buying that blindness, which is exactly why the
+criterion is "smallest that saturates".
+
+**If the junction phase found no missing junction**, this gauge is unavailable
+and you must say so in the report. Two fallbacks, in order of preference:
+
+- **Use a systematic region instead.** Struts running into a machined-off face
+  or an unprinted corner are known absent for the same reason and work
+  identically as a gauge.
+- **Fall back to the images.** Raise the cap until, in
+  `visualize_lattice_element` views of several flagged struts, both scored ends
+  visibly stop short of the junction blobs. This is weaker — it is your judgment
+  of where a blob ends rather than a measurement — and the report must say the
+  cap was set by eye.
+
+### The radius: check coverage in the images
+
+Start at the radius the junction phase settled on. It is bounded on both sides
+and you confirm it by looking:
+
+- **Too small** and the drift leaves strut material outside the cylinder. Take
+  views of two or three struts you expect to be sound, mid-specimen and at high
+  drift: the material must sit inside the dashed band along the whole scored
+  span. The other symptom is a missing fraction climbing steadily along one
+  axis.
+- **Too large** and the cylinder reaches sideways into neighbouring material.
+  The gauge above catches this too — a radius that is too wide starts *losing*
+  known-absent struts back to `partial` or `present`.
+
+Take the smallest radius that covers the struts and keeps the gauge saturated.
+
+### Verify before reporting
+
+At your chosen pair, take `visualize_lattice_element` views of at least:
+
+- **two or three struts you expect to be sound** — the cylinder covers their
+  material along the whole scored span;
+- **two or three flagged struts** — both caps visibly stop short of the junction
+  blobs, and the scored span crosses only empty volume;
+- **a sample of the `partial`s** (*How much to look at*) — to classify each as
+  bleed or break.
+
+**Record the sweep as you go** — every pair tried, what its images showed, and
+why you rejected it or kept it. The report has to reproduce this reasoning, and
+reconstructing it afterwards from counts alone is not possible.
+
+## Choosing the junction radius
+
+The junction phase has one free parameter, and this is it. The radius exists to
+absorb residual registration error: too small and correctly-placed material is
+missed because the lattice sits slightly off it; too large and the probe reaches
+neighbouring struts and hides a real absence. The strut phase starts from
+whatever you settle on here and adds a second parameter of its own — see
+*Choosing the strut parameters*.
 
 Choose the reporting radius **from the slice overlays, not from the counts**.
 At a good radius the spheres visibly cover their junctions despite the residual
@@ -256,10 +416,41 @@ is a MAJOR misalignment — report it and stop rather than widening further.
 
 ## Visual tooling
 
-`visualize_junction_overlay` is the image tool, and it always re-scores the
-junctions internally: pass the `radius` of the scan you are checking, since the
-markers are coloured from that result — green for bright, red for dark — and
-the picture changes with the radius.
+There are two image tools. `visualize_junction_overlay` answers questions about
+the *specimen* — is the lattice aligned, where does the dark set sit.
+`visualize_lattice_element` answers questions about *one element*, and is what
+you verify candidates and choose strut parameters with.
+
+### `visualize_lattice_element`
+
+Give it `element="junction"` or `element="strut"` and the id the scan CSV
+reported. It crops that element's own probe region, pads it, and returns three
+max-intensity projections — along z, y and x — with the probe drawn to scale,
+plus the element's measured intensities and status in the reply.
+
+Three projections rather than one slice, because a single plane through a
+55-voxel strut shows a few voxels of it and material a little off the plane is
+invisible. An element dark in all three views is dark throughout its box.
+
+- For a **junction** the circle is the sampling sphere, coloured red when dark
+  and green when bright.
+- For a **strut** each scored segment is drawn along the axis, red when dark and
+  green when bright, with ticks at the segment boundaries. The dotted line
+  running past both ends is the excluded cap, and both junction blobs stay in
+  frame — which is how you see whether the cap clears them. The dashed lines at
+  ±`radius` show the probe's width; they are exact only when the strut lies in
+  the projection plane and an over-estimate otherwise, which the other two
+  projections cover.
+
+It scores only the element you name, so it is cheap and does not re-run a scan.
+Pass the same `radius` and `cap_voxels` as the scan you are checking, or you are
+looking at a different measurement than the one you are judging.
+
+### `visualize_junction_overlay`
+
+This one always re-scores the junctions internally: pass the `radius` of the
+scan you are checking, since the markers are coloured from that result — green
+for bright, red for dark — and the picture changes with the radius.
 
 - **`mode="mip"`** — a maximum-intensity projection along `axis` with every
   junction marked. Use it for the misalignment grade and for seeing where the
@@ -273,8 +464,8 @@ the picture changes with the radius.
   sphere reaches the next junction, and for reading residual misalignment
   (bright material sitting consistently off-centre in its circle).
 - `slice_index=-1` picks the median junction coordinate along `axis`, a
-  mid-specimen default; set it to a candidate's own coordinate to inspect that
-  candidate. `axis` 0/1/2 slices along z/y/x.
+  mid-specimen default. `axis` 0/1/2 slices along z/y/x. To inspect a single
+  candidate, prefer `visualize_lattice_element`.
 - To scrub the whole stack instead of single planes, re-run
   `scan_lattice_junctions` with `write_marked_tiff=True` for an RGB TIFF with
   the candidates painted. It costs roughly three bytes per input voxel in
@@ -284,11 +475,51 @@ the picture changes with the radius.
 
 Write `lattice_scan_report.md` containing:
 
-- **Inputs and parameters** — the volume, the registered JSON, every radius run,
-  and the reporting radius, which is shared by both phases.
+- **Final parameters**, stated plainly and near the top, on their own labelled
+  lines — not buried in prose:
+
+  ```
+  Junction sampling radius: <r> voxels
+  Strut cylinder radius:    <r> voxels
+  Strut end cap:            <c> voxels
+  Segments per strut:       3 (fixed by the tool)
+  ```
+
+  Repeat these values in your closing message to the user. Every count in the
+  report is conditional on them, so a reader who takes nothing else away must
+  still take these.
+- **Inputs** — the volume, the registered JSON, and the output directory.
 - **Misalignment: NONE / MINOR / MAJOR**, with the overlay images cited. For
   MINOR, state what residual the sweep had to absorb; MAJOR ends the report
   here.
+
+### Parameter selection
+
+The parameters are your judgment, so this section has to make that judgment
+auditable. A count reported without saying which images justified the parameters
+behind it is an incomplete report. Include:
+
+- **The junction radius sweep table** — radius against dark count and largest
+  component — and which slice overlay justified the reporting radius.
+- **The strut sweep table** — every `(radius, cap_voxels)` pair tried, against
+  `n_missing`, `n_partial`, the worst band fraction, and **the bleed gauge**:
+  how many of the known-absent struts read `missing` at that setting, as a
+  fraction of the total. Name which struts the gauge used and why they are known
+  absent (which missing junction they are incident to, or which systematic
+  region they run into). If no gauge was available, say so here and state that
+  the cap was set by eye.
+- **Your reasoning, in your own words**, one short paragraph per parameter:
+  what you varied, which element views you looked at (cite them by filename),
+  what those images showed, and why the value you chose beat its neighbours.
+  Answer specifically:
+  - **where the gauge saturated**, and that the cap you chose is the smallest
+    value that saturates it — not a larger one that also passes;
+  - why the radius covers the struts despite the drift, **and no wider**.
+- **Rejected settings** — at least one pair you tried and rejected, with the
+  reason. For example: *"cap 8: 92 struts read `partial` rather than `missing`,
+  and `strut_1234_r8_c8_proj_z.png` shows the junction blob reaching into the
+  first segment — junction bleed, not breaks."* A sweep reported with no
+  rejections is not a sweep, and reads as defaults accepted without testing.
 
 ### Junctions
 
@@ -302,18 +533,16 @@ Write `lattice_scan_report.md` containing:
   each stochastic finding, write the ids and positions of the affected
   junctions to `junction_scan_stochastic_<issue>.json`, named the same way, and
   cite these files in the report.
-- **Radius sweep table** — radius against dark count and largest component.
-  This table is the evidence for the two judgments above: it shows which part
-  of the dark set was drift (the flags that melted away as the radius grew) and
-  which persisted. Include it so the classification can be audited without
-  re-running the scan. State the reporting radius alongside it and cite the
-  slice overlay that justified the choice.
-- **Surviving candidates** — junction id, x, y, z, intensity, degree, and
-  whether the slice overlay confirmed it.
+- **Surviving candidates** — junction id, x, y, z, intensity, degree, and, for
+  those in the verified sample, whether the element view confirmed it. Say which
+  ones were viewed, how many out of how many, and how they were chosen. (The
+  radius sweep table itself lives in *Parameter selection*; refer to it here
+  rather than repeating it.)
 - **Statistics**: number dark / total, number dark (systematic) / total,
   number dark (stochastic) / total, and number dark but dismissed on visual
   inspection / total. The last three together account for every dark junction
-  at the reporting radius.
+  at the reporting radius. The dismissed count is over the sample viewed, so
+  give the sample size beside it.
 
 ### Struts
 
@@ -325,12 +554,21 @@ Write `lattice_scan_report.md` containing:
   junction finding rather than independent defects.
 - **Stochastic verdict: YES / NO** for the isolated missing struts that remain.
   Write their ids and positions to `strut_scan_stochastic_<issue>.json`.
+- **Partial struts** — the count, and for each one in the viewed sample whether
+  the element view showed junction bleed (a bright *end* segment, meaning the
+  cap is short) or a genuine mid-span break. Give the image filename for each.
+  State the sample: how many were viewed out of how many, and how they were
+  chosen. If any were reclassified by raising the cap, say so. Report break
+  candidates as candidates, not as confirmed breaks.
 - **Statistics**: number missing / total, split into systematic, corroborating
-  and isolated. Those must account for every missing strut at the reporting
-  radius.
+  and isolated; plus number partial / total split into bleed and break
+  candidates. Those must account for every flagged strut at the reporting
+  parameters. The bleed/break split is over the sample viewed — give the sample
+  size beside it, and do not extrapolate the split to the unviewed rest.
 - **Sensitivity not claimed** — state plainly that this scan detects *absence*
-  only: a thin strut and a strut broken away from its midpoint both read as
-  present, so a clean strut result does not mean the struts are sound.
+  only: a thin strut reads as present, and so does a break that falls entirely
+  inside one of the end caps. A clean strut result does not mean the struts are
+  sound.
 
 ### Additional notes
 
@@ -351,10 +589,26 @@ and that reasoning has already produced a wrong conclusion once.
   and the strut scan reports the same `n_junctions` as the junction scan.
 - The Otsu threshold is the full-volume one, identical in both scans, and does
   not change between runs on the same volume.
-- Every junction candidate you report has been looked at in a slice overlay.
+- A stated sample of the junction candidates you report has been looked at in an
+  element view — all of them when there are ten or fewer, at least ten and
+  spread across the specimen otherwise — and nothing in the sample turned out to
+  sit on material.
 - Every strut you report as missing has both endpoint junctions accounted for:
   either both are bright (an isolated missing strut) or one is a junction you
-  already reported.
+  already reported. This one is a bookkeeping check on the CSV, not a visual
+  one, so it covers every row.
+- A sample of the `partial`s has been looked at and classified as bleed or
+  break, on the same rule, and the report gives the sample size next to the
+  split.
+- **The bleed gauge is saturated: every strut incident to a junction you
+  reported missing reads `missing` itself.** If any reads `partial`, the cap is
+  too short — the junction's own material is bleeding into the end segments —
+  and the parameters are not settled. This is the check the cap was chosen to
+  pass, so a report that fails it has its counts measured at the wrong setting.
+- **The cap is the smallest value that saturates the gauge.** If the next value
+  down also saturates it, you scored less span than you needed to.
+- The report states the final parameters on their own lines, gives the gauge
+  column in the sweep table, and names at least one rejected setting.
 
 ## Notes
 
@@ -379,7 +633,7 @@ and that reasoning has already produced a wrong conclusion once.
   new one.
 - Both CSVs have a row for **every** element, flagged or not — the junction one
   with its component size and dark-neighbour count, the strut one with its
-  endpoint junction ids and how many of its sample points were dark. That is
+  endpoint junction ids and how many of its segments were dark. That is
   where you get the ids of a region you want to account for separately, and it
   lets you re-band or re-group the specimen without re-running either scan.
 - Registered JSON filenames in this dataset contain spaces; quote them.

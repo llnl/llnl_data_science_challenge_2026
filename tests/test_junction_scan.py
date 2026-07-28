@@ -222,13 +222,34 @@ def test_mip_overlay_renders_on_every_axis(synthetic_lattice, tmp_path, axis):
     assert output_path.stat().st_size > 0
 
 
-def test_marked_tiff_paints_the_candidate_red(synthetic_lattice, tmp_path):
-    result = _scan(synthetic_lattice, radius=3)
+def test_marked_tiff_outlines_the_candidate_without_covering_it(
+    synthetic_lattice, tmp_path
+):
+    """The marker is a shell, not a ball.
+
+    This stack exists to answer whether there is material where a candidate
+    sits, and a solid marker answers it by painting over it. So the wall is
+    drawn at the sampling radius -- bounding exactly the voxels the flag came
+    from -- and everything inside keeps its original grayscale.
+    """
+    radius, thickness = 3, 2
+    result = _scan(synthetic_lattice, radius=radius)
     tiff_path = save_marked_tiff(
-        synthetic_lattice.volume, result, tmp_path / "marked.tif"
+        synthetic_lattice.volume, result, tmp_path / "marked.tif", thickness=thickness
     )
 
     marked = tifffile.imread(tiff_path)
     assert marked.shape == synthetic_lattice.volume.shape + (3,)
     x, y, z = synthetic_lattice.dark_position_xyz
-    assert marked[z, y, x].tolist() == [255, 0, 0]
+
+    # On the wall: painted. At radius 3 with a 2-voxel wall, offsets whose
+    # squared distance falls in (1, 9] are the shell.
+    assert marked[z, y, x + radius].tolist() == [255, 0, 0]
+    assert marked[z + radius, y, x].tolist() == [255, 0, 0]
+
+    # Inside it: untouched, so the voxels the reader came to look at survive.
+    for offset in ((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)):
+        interior = marked[z + offset[2], y + offset[1], x + offset[0]]
+        assert interior[0] == interior[1] == interior[2], (
+            f"voxel at offset {offset} was painted over; it is inside the shell"
+        )

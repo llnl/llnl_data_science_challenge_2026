@@ -54,14 +54,36 @@ def to_rgb_uint8(volume: np.ndarray) -> np.ndarray:
 
 
 def mark_points(
-    rgb_volume: np.ndarray, voxel_xyz: np.ndarray, radius: int, color: tuple[int, int, int]
+    rgb_volume: np.ndarray,
+    voxel_xyz: np.ndarray,
+    radius: int,
+    color: tuple[int, int, int],
+    thickness: int | None = None,
 ) -> None:
-    """Paint a filled sphere of ``color`` at each (x, y, z) voxel coordinate, in place."""
+    """Paint a sphere of ``color`` at each (x, y, z) voxel coordinate, in place.
+
+    Args:
+        rgb_volume: (z, y, x, 3) uint8 volume, modified in place.
+        voxel_xyz: (N, 3) marker centers as [x, y, z].
+        radius: Sphere radius in voxels, normally the sampling radius so the
+            marker covers exactly the neighborhood the flag came from.
+        color: RGB triple.
+        thickness: Wall thickness in voxels for a hollow shell, or None for a
+            solid sphere. A shell leaves the voxels *inside* the marker at their
+            original grayscale, which is the whole point when the question being
+            asked of the image is whether there is material there -- a solid
+            marker paints over its own evidence. Slices through a shell read as
+            rings, filling in only where the plane clips the sphere's cap.
+    """
     z_size, y_size, x_size, _ = rgb_volume.shape
     color_array = np.array(color, dtype=np.uint8)
     offsets = np.arange(-radius, radius + 1)
     dz, dy, dx = np.meshgrid(offsets, offsets, offsets, indexing="ij")
-    sphere_mask = (dz**2 + dy**2 + dx**2) <= radius**2
+    distance_squared = dz**2 + dy**2 + dx**2
+    sphere_mask = distance_squared <= radius**2
+    if thickness is not None:
+        inner = max(radius - thickness, 0)
+        sphere_mask &= distance_squared > inner**2
 
     for x, y, z in voxel_xyz:
         z0, z1 = max(z - radius, 0), min(z + radius + 1, z_size)

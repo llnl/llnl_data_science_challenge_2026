@@ -49,6 +49,18 @@ for the full challenge description.
       Bisections are pinned to **1** — the midpoint alone — because that is the
       only placement whose probe clears the junctions at a radius wide enough to
       absorb the registration drift (finding 4 below).
+- [x] Phase 2d — the strut probe is now a **capped cylinder**: radius acts
+      perpendicular to the strut and answers the drift, `cap_voxels` acts along
+      it and answers the junction reach. Because the two demands act on
+      different axes they no longer collide, so the span *can* be subdivided and
+      the `partial` class is reachable for the first time. Three segments are
+      fixed by the MCP tool; the agent sees `radius` and `cap_voxels` and
+      chooses them from images, using the new `visualize_lattice_element` tool
+      (`src/element_views.py`) which renders one junction or one strut as three
+      orthogonal max projections with the probe drawn to scale. The
+      `scan-lattice` skill now requires the agent to report *how* it chose its
+      parameters — a sweep table, the images it judged from, and at least one
+      rejected setting — and to print the final parameters plainly.
 
 Note the raw/nominal design JSONs and STLs are NOT aligned with the TIFF
 coordinate system; only the `registered_jsons/` variants line up with their
@@ -138,40 +150,71 @@ for it separately.
 directly, which is the right place for it — that script is hardcoded to this
 specimen, and the detector is not.
 
-## Missing struts — sphere probe, cross-validated against the retired cylinder
+## Missing struts — capped cylinder, cross-validated against the retired sphere
 
-`src/strut_scan.py` reuses the junction detector's statistic: sample each strut
-at points placed by recursively bisecting its span, take the brightest voxel
-within `radius` of each, and call a point dark below the full-volume Otsu.
-`n` bisections give `2**n - 1` points at the fractions `k / 2**n`; **the tool
-fixes `n = 1`, the midpoint alone**, so in practice a strut is `missing` when its
-midpoint is dark. (`partial` — some but not all points dark — is defined for
-`n > 1` and cannot arise at the shipped setting.) That is two free parameters
-against the cylinder detector's three (radius, end-trim, area cut), only one of
-which the agent sees, with no derived quantity and no fitted cut. Full
-derivation in `docs/strut_flagging_criteria.md`.
+`src/strut_scan.py` wraps a cylinder of `radius` around each strut's axis, cuts
+`cap_voxels` off each end, tiles what remains into `2**n - 1` abutting segments,
+and takes the brightest voxel in each, cut against the full-volume Otsu. A strut
+is `missing` when every segment is dark, `partial` when some but not all are.
+**The MCP tool fixes `n = 2`** — three segments — leaving the agent `radius` and
+`cap_voxels`. Full derivation in `docs/strut_flagging_criteria.md`.
 
-The cylinder detector (`strut_cylinder_segmentation.py`) is **deleted**. Its
-`bottom_layer_junctions()` moved to `mark_junction_candidates_tiff.py`, the one
-script hardcoded to this specimen.
+**The two parameters act on different axes, and that is the whole point.**
+`radius` is perpendicular to the strut and answers only the registration drift;
+`cap_voxels` is along it and answers only the endpoint junctions' reach. The
+sphere probe this replaced had one radius for both jobs, no value satisfied
+them together (finding 4 below), and the `partial` class was therefore
+unreachable. It is reachable now.
 
-### Cross-validation on `0point5dash1` (bottom face excluded, 17460 struts)
+The cylinder/cross-section detector (`strut_cylinder_segmentation.py`) is still
+**deleted** and is not what this is: its mean-intensity and area-cut statistics
+stay dead, and its `bottom_layer_junctions()` remains in
+`mark_junction_candidates_tiff.py`, the one script hardcoded to this specimen.
 
-| Method | flagged | missing / empty |
-|---|---|---|
-| cylinder r=8, trim 0.25 (retired) | 95 | 87 empty |
-| **sphere N=1, r=8 (shipped)** | **97** | **97** |
-| sphere N=2, r=8 | 99 | 21 missing + 78 partial |
+### The cap is measured, not assumed
 
-- The shipped configuration recovers **all 87** cylinder-empty struts and adds
-  10; it clears the ≥ 87 bar with no misses.
-- It also contains **all 95** the cylinder flagged, disagreeing on **2 struts of
-  17460, both sphere-only** — a strict superset. (N=2 gives the same relation
-  with 4 disagreements, so it does not depend on the bisection count.)
-- Both bisection counts flag **all 24 struts** incident to the two confirmed
-  missing junctions (513, 2682).
-- x-band flagged fractions at r=8 are flat (0.33–0.80%), so no drift gradient
-  survives.
+The 24 struts incident to the two confirmed missing junctions are all genuinely
+absent, so any reading `partial` are being lit by their own junction. That makes
+them a direct readout of the bleed. At `radius = 8` on `0point5dash1`:
+
+| `cap_voxels` | 6 | 8 | 10 | 12 | **14** | 16 | 20 |
+|---|---|---|---|---|---|---|---|
+| confirmed struts reading `missing` | 3/24 | 7/24 | 13/24 | 21/24 | **24/24** | 24/24 | 24/24 |
+| total `missing` | 305 | 323 | 362 | 397 | **417** | 422 | 427 |
+| total `partial` | 128 | 112 | 74 | 38 | **23** | 18 | 10 |
+
+14 is the smallest cap that clears it, matching the independently measured
+junction reach (0% of probes lit at 14 voxels). Bigger is not safer — cap is
+span that stops being scored, and a break inside a cap is invisible.
+
+At `cap = 14`, radius 6 is too narrow (58 partials, and 3 struts called missing
+that a sphere at the same radius found material in) and radius 10 too wide
+(loses 3 of the 24 confirmed struts to neighbouring material). Radius 8, the
+junction phase's, sits in the flat middle.
+
+### Cross-validation on `0point5dash1` (full lattice, 18468 struts, r=8)
+
+| Method | flagged | missing | partial |
+|---|---|---|---|
+| sphere at midpoint (retired) | 429 | 429 | — unreachable |
+| **cylinder, cap 14, 3 segments (shipped)** | **440** | **417** | **23** |
+
+- The cylinder flags **all 429** struts the sphere flagged, at **every**
+  `(radius, cap)` pair tried. Nothing the old detector found is lost anywhere in
+  the sweep, which is what makes the cap safe to tune.
+- Its `missing` set is a strict **subset** of the sphere's — no strut is
+  cylinder-missing and sphere-present at r=8. The 12 struts the sphere called
+  missing and the cylinder calls partial have material off the midpoint, which
+  a single sample point could not see. A further 11 partials have a bright
+  midpoint and were called `present` outright by the sphere.
+- All **24 struts** incident to junctions 513 and 2682 read `missing`.
+- The machined face is rediscovered unprompted: **328 of 417** missing struts
+  have an endpoint in the 171-junction dark component.
+- x-band missing fractions at r=8, cap=14 are 2.24/2.35/1.82/2.64% — flat, so
+  no drift gradient survives.
+
+A `partial` is evidence, not a verdict: junction bleed and a real break both
+produce it, and they are separated by looking, with `visualize_lattice_element`.
 
 ### Four findings that dominate any coordinate-sampling approach
 
@@ -198,31 +241,33 @@ script hardcoded to this specimen.
    this (untrimmed it found 1 strut in 17460); the bisection points are interior
    by construction.
 
-4. **Only the midpoint can be sampled, which is why bisections are pinned to 1.**
-   Junction-local material reaches ~12 voxels along an absent strut's own axis
-   (33% of probes lit at 6 voxels, 2.3% at 10, 0% at 14). Against a 55.8-voxel
-   strut, the midpoint sits 27.9 voxels from either junction, so a radius-8
-   sphere spans 19.9–35.9 and clears that reach by ~8 voxels at both ends. N=2's
-   outer points sit at 14.0 voxels and would need r < 2, while the drift needs
-   r ≥ 7 — **no radius does both.** The symptom at N=2 is that an absent strut's
-   outer point gets lit by its own junction and the strut is demoted to
-   `partial`: of the 87 known-empty struts, 84 read all-dark at r=4 but only 21
-   at r=8, while **the midpoint was dark on all 87 at every radius**. The
-   midpoint carries the whole detection; the outer points only add a class that
-   junction bleed and a real break populate indistinguishably.
+4. **Junction material reaches ~12 voxels along an absent strut's own axis**
+   (33% of probes lit at 6 voxels, 2.3% at 10, 0% at 14). This is why a probe
+   near a strut's end reports on its junction, and it is the quantity
+   `cap_voxels` exists to clear.
 
-**This scan detects absence, not integrity.** Two defect classes read as
-`present`, and a clean result is not evidence against either:
+   It used to be a hard ceiling on the *bisection count*. With a sphere the same
+   radius had to absorb the drift (needs r ≥ 7) and stay out of the junctions;
+   N=2's outer points sat 14.0 voxels out and would have needed r < 2, so **no
+   radius did both** and the count was pinned to 1. That conclusion was correct
+   about spheres and is **not** a law about probes in general — it was the
+   motivation for the cap, which trims along the axis while the radius keeps
+   working perpendicular to it. Both demands are now satisfiable at once, and
+   the sweep above measures the cap that does it.
 
-- **Thin struts.** A maximum over a sphere saturates. The cylinder's
-  cross-section could in principle have caught them (8 of its 95 were flagged
-  but not empty) but that was never validated, and it cost a third free
-  parameter.
-- **Partial/broken struts.** A break that misses the midpoint leaves the sample
-  point bright. Recovering this needs a refit registration that permits a
-  narrower probe (mean node offset 2.13 → 0.87 vox), not a new threshold. The
-  summary JSON's `n_partial` is structurally zero at one sample point — check
-  `n_points_per_strut` before reading anything into it.
+**This scan detects absence over the scored span, not integrity.** Two things
+read as `present`, and a clean result is not evidence against either:
+
+- **Thin struts.** A maximum saturates regardless of the probe's shape. Not
+  detected, and not something the retired cylinder's cross-section was ever
+  validated to catch.
+- **A break inside an end cap.** The caps are scored by nothing. This is the
+  price of clearing the junction bleed, and the reason `cap_voxels` should be
+  the smallest value that works rather than a generous one.
+
+Breaks in the scored span *are* now visible, as `partial`. That class is real at
+the shipped setting — check `n_segments_per_strut` is 3 — but it is evidence
+rather than a verdict: junction bleed from too small a cap populates it too.
 
 Statistics that do *not* work, both verified on real data during the cylinder
 era and still worth not re-trying: the cylinder **mean intensity** (a

@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import tifffile
 from fastmcp import FastMCP
+from skimage.filters import threshold_otsu
 
 from skeleton_graph import create_skeleton_graph
 from skeletonization import skeletonize_mask
@@ -33,14 +34,25 @@ from junction_scan import (
     summarize_scan,
     write_junction_csv,
 )
-from strut_scan import scan_struts, summarize_strut_scan, write_strut_csv
+from element_views import save_junction_views, save_strut_views
+from overlay_registered_nodes_histogram import sample_volume_at_nodes
+from strut_center_intensity_histogram import load_lattice
+from strut_scan import (
+    STATUS_MISSING,
+    STATUS_PARTIAL,
+    STATUS_PRESENT,
+    scan_struts,
+    score_strut,
+    summarize_strut_scan,
+    write_strut_csv,
+)
 
-# One bisection samples each strut at its midpoint alone -- the point furthest
-# from both junctions, and the only placement on this lattice for which a radius
-# wide enough to absorb the registration drift still clears the junctions' own
-# material. Fixed rather than exposed: a caller varying both it and the radius
-# would be tuning two knobs against the same evidence.
-STRUT_BISECTIONS = 1
+# Two bisections cut the scored span into three segments, which is the coarsest
+# division that can distinguish a strut absent along its whole length from one
+# broken over part of it. Fixed rather than exposed: the caller already has two
+# parameters shaping the same region, and a third that only subdivides it would
+# be tuned against the same evidence as the other two.
+STRUT_BISECTIONS = 2
 
 # Initialize the MCP server
 mcp = FastMCP("CT Segmentation")
@@ -277,27 +289,41 @@ def scan_lattice_struts(
     registered_json_path: str,
     output_dir: str,
     radius: int = 8,
+    cap_voxels: float = 14.0,
 ) -> str:
-    """Score every lattice strut against a CT volume and report the missing ones.
+    """Score every lattice strut against a CT volume with a capped cylinder probe.
 
-    Samples each strut at the **midpoint** of its junction-to-junction span,
-    taking the brightest voxel within ``radius``, and calls the strut missing
-    when that maximum falls below the full-volume Otsu threshold. The midpoint
-    is the point furthest from both junctions, whose own material stays bright
-    when any one of their twelve struts is absent.
+    Wraps a cylinder of ``radius`` around each strut's axis, cuts ``cap_voxels``
+    off each end, divides what remains into **three** abutting segments, and
+    takes the brightest voxel in each. A segment is dark when that maximum falls
+    below the full-volume Otsu threshold::
 
-    Two things this cannot see, neither of which a clean result rules out:
+        -[===|===|===]-      - = cap (not scored)   [...] = scored span
 
-    - **A thin strut.** The statistic is a maximum, so a strut that is present
-      but under-thickness still reads as present.
-    - **A partial strut.** A break that does not cover the midpoint leaves the
-      sample point bright. Sampling more of the span would need points closer to
-      the junctions than their material reaches, so on these specimens it is not
-      currently available.
+    - **missing** -- all three segments dark. No material along the strut.
+    - **partial** -- some but not all dark. Material over part of the span only,
+      which is what a break looks like.
+    - **present** -- none dark.
+
+    The two parameters do separate jobs, which is the point of the shape.
+    ``radius`` is measured perpendicular to the axis and absorbs residual
+    registration drift. ``cap_voxels`` is measured along the axis and excludes
+    the endpoint junctions' own material -- twelve struts meet at a junction and
+    the blob stays bright when any one is absent, so a probe reaching into it
+    reports on the junction rather than the strut. Set the cap past that reach
+    (about 12 voxels on the 9x9x9 octet specimens) or genuinely absent struts get
+    demoted to **partial** by junction bleed. Set it too high and the scored span
+    shrinks until a real break can hide inside a cap.
+
+    What this still cannot see, and a clean result does not rule out: a **thin**
+    strut. The statistic is a maximum, so an under-thickness strut has a bright
+    voxel in every segment and reads as present.
 
     Run the junction scan first: this tool knows nothing about the specimen and
     suppresses nothing, so struts belonging to a systematic region are separated
     out by looking their endpoint junctions up in the junction scan's results.
+    Use ``visualize_lattice_element`` to see what a given ``radius``/``cap_voxels``
+    pair actually covers before trusting its counts.
 
     Args:
         volume_path: Existing 3D CT volume as ``.npy``, ``.tif``, or ``.tiff``.
@@ -305,11 +331,11 @@ def scan_lattice_struts(
             coordinates. Nominal or raw design JSONs are not aligned and will
             flag nearly everything.
         output_dir: Directory for the CSV and summary JSON. Both filenames carry
-            the radius, so repeated calls at different radii do not overwrite.
-        radius: Sampling sphere radius in voxels. Use the radius settled on for
-            the junction scan of the same volume. Too small and residual
-            registration drift reads as absence; too large and the probe reaches
-            the junctions at either end and hides a real absence.
+            the radius and the cap, so a sweep does not overwrite itself.
+        radius: Cylinder radius in voxels, perpendicular to the strut axis. Use
+            the radius settled on for the junction scan of the same volume.
+        cap_voxels: Voxels trimmed from each end of the strut before scoring.
+            Must be below half the shortest strut's length.
 
     Returns:
         A status message with the counts, the strongest spatial signal, the
@@ -322,25 +348,31 @@ def scan_lattice_struts(
 
         volume = _load_volume(volume_input)
         result = scan_struts(
-            volume, registered_path, radius=radius, n_bisections=STRUT_BISECTIONS
+            volume,
+            registered_path,
+            radius=radius,
+            cap_voxels=cap_voxels,
+            n_bisections=STRUT_BISECTIONS,
         )
         summary = summarize_strut_scan(result)
 
         output_directory.mkdir(parents=True, exist_ok=True)
-        csv_path = write_strut_csv(
-            output_directory / f"strut_scan_r{result.radius}.csv", result
-        )
-        summary_path = output_directory / f"strut_scan_r{result.radius}_summary.json"
+        stem = f"strut_scan_r{result.radius}_c{_format_cap(result.cap_voxels)}"
+        csv_path = write_strut_csv(output_directory / f"{stem}.csv", result)
+        summary_path = output_directory / f"{stem}_summary.json"
         summary_path.write_text(json.dumps(summary, indent=2))
 
         lines = [
             f"Scanned {registered_path.name} against {volume_input.name} at radius "
-            f"{result.radius}, sampling each strut's midpoint.",
+            f"{result.radius}, cap {result.cap_voxels:g}, "
+            f"{result.n_segments} segment(s) per strut.",
             f"{summary['n_struts']} struts across {summary['n_junctions']} merged "
             f"junctions; full-volume Otsu threshold "
             f"{summary['otsu_threshold']:.0f}.",
             f"{summary['n_missing']} missing "
-            f"({_format_fraction(summary['missing_fraction'])}).",
+            f"({_format_fraction(summary['missing_fraction'])}), "
+            f"{summary['n_partial']} partial "
+            f"({_format_fraction(summary['partial_fraction'])}).",
             _describe_worst_band(summary["missing_fraction_by_band"], "struts"),
             _describe_candidates(summary["candidates"], "strut_id", "strut"),
             f"Per-strut CSV: {csv_path}; summary JSON: {summary_path}.",
@@ -419,6 +451,150 @@ def visualize_junction_overlay(
         )
     except Exception as exc:
         return f"Error visualizing junction overlay: {exc}"
+
+
+@mcp.tool()
+def visualize_lattice_element(
+    volume_path: str,
+    registered_json_path: str,
+    element: str,
+    element_id: int,
+    output_dir: str,
+    radius: int = 8,
+    cap_voxels: float = 14.0,
+) -> str:
+    """Render one junction or one strut as three orthogonal projections.
+
+    This is the view for judging a *single* element, which the whole-slice
+    overlays cannot do: one plane through a 55-voxel strut shows a few voxels of
+    it, and a candidate can hide between slices. Here the element's own probe
+    region is cropped, padded, and projected along z, y and x, with the probe
+    drawn to scale on each image.
+
+    Use it for two things:
+
+    - **Choosing ``radius`` and ``cap_voxels``.** At a good radius the cylinder's
+      band covers the strut despite the residual drift; at a good cap the scored
+      span visibly stops short of both junction blobs. Sweep the parameters and
+      look, rather than picking the pair that produces an agreeable count.
+    - **Verifying a candidate.** A flagged element should show empty space inside
+      the probe while its surroundings show material.
+
+    The element is scored on its own here, so this does not re-run a whole scan.
+    Segments are drawn red when dark and green when bright; a junction's circle
+    is colored the same way.
+
+    Args:
+        volume_path: Existing 3D CT volume as ``.npy``, ``.tif``, or ``.tiff``.
+        registered_json_path: Lattice JSON registered to this volume.
+        element: ``"junction"`` or ``"strut"``.
+        element_id: For ``"junction"``, a **merged** junction id as reported by
+            ``scan_lattice_junctions`` -- not a JSON entry id. For ``"strut"``,
+            a strut id, which is the JSON's own.
+        output_dir: Directory for the three images.
+        radius: Sphere radius for a junction, cylinder radius for a strut.
+        cap_voxels: Voxels excluded at each end of a strut. Ignored for a
+            junction.
+
+    Returns:
+        A status message with the element's measured intensities, its status,
+        and the three image paths, or an error message.
+    """
+    try:
+        if element not in ("junction", "strut"):
+            raise ValueError(
+                f'element must be "junction" or "strut", got {element!r}'
+            )
+        if radius < 1:
+            raise ValueError(
+                f"radius must be a positive number of voxels, got {radius}"
+            )
+
+        volume_input = _validate_volume_input(volume_path)
+        registered_path = _validate_json_input(registered_json_path, "registered_json_path")
+        output_directory = Path(output_dir).expanduser()
+
+        volume = _load_volume(volume_input)
+        threshold = float(threshold_otsu(volume))
+        positions_xyz, strut_junction_ids, _ = load_lattice(registered_path)
+
+        if element == "junction":
+            if not 0 <= element_id < len(positions_xyz):
+                raise ValueError(
+                    f"junction id must be between 0 and {len(positions_xyz) - 1}, "
+                    f"got {element_id}"
+                )
+            position = positions_xyz[element_id]
+            intensity, _ = sample_volume_at_nodes(volume, position[None, :], radius)
+            dark = bool(intensity[0] < threshold)
+            stem = f"junction_{element_id}_r{radius}"
+            paths = save_junction_views(
+                volume, position, radius, output_directory, stem, dark=dark
+            )
+            return (
+                f"Junction {element_id} at "
+                f"({position[0]:.0f}, {position[1]:.0f}, {position[2]:.0f}), "
+                f"radius {radius}: brightest voxel {float(intensity[0]):.0f} "
+                f"against Otsu {threshold:.0f} -- "
+                f"{'DARK (candidate)' if dark else 'bright (present)'}. "
+                f"Images: {', '.join(str(p) for p in paths)}."
+            )
+
+        if not 0 <= element_id < len(strut_junction_ids):
+            raise ValueError(
+                f"strut id must be between 0 and {len(strut_junction_ids) - 1}, "
+                f"got {element_id}"
+            )
+        first, second = strut_junction_ids[element_id]
+        start_xyz, end_xyz = positions_xyz[first], positions_xyz[second]
+        intensities, lower, upper = score_strut(
+            volume,
+            start_xyz,
+            end_xyz,
+            radius=radius,
+            cap_voxels=cap_voxels,
+            n_bisections=STRUT_BISECTIONS,
+            strut_id=element_id,
+        )
+        segment_dark = intensities < threshold
+        status = (
+            STATUS_MISSING
+            if segment_dark.all()
+            else STATUS_PARTIAL
+            if segment_dark.any()
+            else STATUS_PRESENT
+        )
+        stem = f"strut_{element_id}_r{radius}_c{_format_cap(cap_voxels)}"
+        paths = save_strut_views(
+            volume,
+            start_xyz,
+            end_xyz,
+            radius,
+            cap_voxels,
+            lower,
+            upper,
+            output_directory,
+            stem,
+            segment_dark=segment_dark,
+        )
+        readings = ", ".join(
+            f"{float(v):.0f}{'*' if d else ''}"
+            for v, d in zip(intensities, segment_dark)
+        )
+        return (
+            f"Strut {element_id} joins junctions {first} and {second}, "
+            f"radius {radius}, cap {cap_voxels:g}, {len(intensities)} segments. "
+            f"Segment maxima (start to end, * = dark): {readings} against Otsu "
+            f"{threshold:.0f} -- {status.upper()}. "
+            f"Images: {', '.join(str(p) for p in paths)}."
+        )
+    except Exception as exc:
+        return f"Error visualizing lattice element: {exc}"
+
+
+def _format_cap(cap_voxels: float) -> str:
+    """Render a cap for a filename, dropping a trailing ``.0`` so 14.0 reads 14."""
+    return f"{cap_voxels:g}".replace(".", "p")
 
 
 def _format_fraction(fraction: float | None) -> str:
