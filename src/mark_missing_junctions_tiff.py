@@ -23,8 +23,7 @@ The volume's own Otsu has neither problem. It is measured where the balanced
 bimodal assumption actually holds (11.3% material against 88.7% background),
 it falls mid-trough for the node distribution, and it is independent of the
 node set -- so it does not move when junctions are excluded. It is also what
-strut_center_intensity_histogram and strut_cylinder_segmentation already cut
-against.
+strut_center_intensity_histogram and strut_scan already cut against.
 """
 
 import numpy as np

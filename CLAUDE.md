@@ -28,7 +28,7 @@ for the full challenge description.
       junctions/struts directly from the `.tif` files.
 - [x] Phase 2a — junction detection packaged for agents: `src/junction_scan.py`
       (science), the `scan_lattice_junctions` and `visualize_junction_overlay`
-      MCP tools, and the `scan-junctions` skill. The skill runs alignment and
+      MCP tools, and the `scan-lattice` skill. The skill runs alignment and
       systematic checks *before* reporting stochastic candidates, and treats the
       sampling radius as its one free parameter.
 - [x] Phase 2b — the tools carry **no specimen-specific defect knowledge** and
@@ -40,9 +40,15 @@ for the full challenge description.
       junction and suppress nothing — an `exclude_junction_ids` parameter came
       and went, since a junction's darkness never depended on any other
       junction's status and excluding only changed the bookkeeping.
-
-**Current focus is missing junctions, not missing struts.** The strut detector
-works and its findings are recorded below, but validating it is parked.
+- [x] Phase 2c — strut detection rebuilt on the junction detector's sphere
+      probe: `src/strut_scan.py`, the `scan_lattice_struts` MCP tool, and the
+      `scan-junctions` skill widened to `scan-lattice` covering both phases. The
+      cylinder/cross-section detector is deleted. Two free parameters (sphere
+      radius, number of bisections) replace the cylinder's three, the agent gets
+      only one of them, and it is the *same* radius the junction phase chose.
+      Bisections are pinned to **1** — the midpoint alone — because that is the
+      only placement whose probe clears the junctions at a radius wide enough to
+      absorb the registration drift (finding 4 below).
 
 Note the raw/nominal design JSONs and STLs are NOT aligned with the TIFF
 coordinate system; only the `registered_jsons/` variants line up with their
@@ -56,17 +62,17 @@ is available** for validating a detector against a known-clean part.
 ## Missing junctions — solved and validated
 
 The detector now lives in `src/junction_scan.py`; `mark_junction_candidates_tiff.py`
-is a thin script over it, and the `scan-junctions` skill is how an agent drives
+is a thin script over it, and the `scan-lattice` skill is how an agent drives
 it. All three produce the same numbers below.
 
 `src/mark_junction_candidates_tiff.py` finds **2 missing junctions** in the
 `0point5dash1` scan: merged ids 513 at (141, 685, 499) and 2682 at
 (615, 682, 420), both degree 12. The user visually inspected the stack and
 confirmed there are exactly 2 — so this is 2/2 with no false positives or
-negatives. Three independent statistics agree on the same pair (node-intensity
-sphere, strut-center probe, cylinder segmented-voxel counts), and all 24 struts
-incident to them are independently flagged *and* fully empty by the strut
-detector.
+negatives. Independent statistics agree on the same pair (node-intensity sphere,
+strut-center probe, and the retired cylinder's segmented-voxel counts), and all
+24 struts incident to them are flagged by the strut detector at every radius and
+bisection count tried.
 
 Consequence worth carrying: **strut removal in this dataset is clustered, not
 i.i.d.** Two junctions with all 12 incident struts absent is impossible under
@@ -124,55 +130,104 @@ expected defect counts from independent-removal probabilities.
    recovers.
 
 Plus the machined-off bottom face, which is shared with the strut analysis and
-described as strut finding 1. It is no longer special-cased in the junction
-tools: they rediscover it every run as one component of 171, report it alongside
-everything else, and leave the caller to account for it separately.
+described as strut finding 1. It is no longer special-cased in either detector:
+they rediscover it every run — one junction component of 171, and 328 missing
+struts — report it alongside everything else, and leave the caller to account
+for it separately.
 `mark_junction_candidates_tiff.py` still uses `bottom_layer_junctions()`
 directly, which is the right place for it — that script is hardcoded to this
 specimen, and the detector is not.
 
-## Missing struts — working, unvalidated, parked
+## Missing struts — sphere probe, cross-validated against the retired cylinder
 
-`src/strut_cylinder_segmentation.py`: segment the volume once at the full-volume
-Otsu threshold, then sweep a cylinder along each nominal strut and count
-segmented voxels inside it. The per-strut statistic is
-`area = n_segmented / sampled_length`, a cross-section in voxels², compared
-against the nominal design cross-section (12.3 vox²).
+`src/strut_scan.py` reuses the junction detector's statistic: sample each strut
+at points placed by recursively bisecting its span, take the brightest voxel
+within `radius` of each, and call a point dark below the full-volume Otsu.
+`n` bisections give `2**n - 1` points at the fractions `k / 2**n`; **the tool
+fixes `n = 1`, the midpoint alone**, so in practice a strut is `missing` when its
+midpoint is dark. (`partial` — some but not all points dark — is defined for
+`n > 1` and cannot arise at the shipped setting.) That is two free parameters
+against the cylinder detector's three (radius, end-trim, area cut), only one of
+which the agent sees, with no derived quantity and no fitted cut. Full
+derivation in `docs/strut_flagging_criteria.md`.
 
-With `--radii 8 --end-trim 0.25` and the bottom face excluded: **95 struts
-flagged (0.54%), 87 fully empty (0.50%)** against a 0.5% nominal (~92 struts),
-flat across x, y and z at 0.29–0.99% — no positional gradient. Those 95
-decompose into 24 incident to the two missing junctions (all confirmed) and 71
-isolated. The 8 flagged-but-not-empty struts are all isolated and may be *thin*
-rather than missing — a separate defect class. The 71 have not been validated
-against anything.
+The cylinder detector (`strut_cylinder_segmentation.py`) is **deleted**. Its
+`bottom_layer_junctions()` moved to `mark_junction_candidates_tiff.py`, the one
+script hardcoded to this specimen.
 
-### Three findings that dominate any coordinate-sampling approach
+### Cross-validation on `0point5dash1` (bottom face excluded, 17460 struts)
+
+| Method | flagged | missing / empty |
+|---|---|---|
+| cylinder r=8, trim 0.25 (retired) | 95 | 87 empty |
+| **sphere N=1, r=8 (shipped)** | **97** | **97** |
+| sphere N=2, r=8 | 99 | 21 missing + 78 partial |
+
+- The shipped configuration recovers **all 87** cylinder-empty struts and adds
+  10; it clears the ≥ 87 bar with no misses.
+- It also contains **all 95** the cylinder flagged, disagreeing on **2 struts of
+  17460, both sphere-only** — a strict superset. (N=2 gives the same relation
+  with 4 disagreements, so it does not depend on the bisection count.)
+- Both bisection counts flag **all 24 struts** incident to the two confirmed
+  missing junctions (513, 2682).
+- x-band flagged fractions at r=8 are flat (0.33–0.80%), so no drift gradient
+  survives.
+
+### Four findings that dominate any coordinate-sampling approach
 
 1. **The specimen's bottom face was machined off after printing.** Any mid-stack
    slice shows the lattice ending in a sawtooth around y≈720, with no material
    where the design's last junction row sits (y≈760). Those junctions exist in
-   the JSON but not in the part. Before excluding them they were 324 of 325
-   flagged struts and *all* empty cylinders, while every other layer flagged
-   0.00% — the entire apparent signal, none of it a defect. The face is the
-   max-Y layer of the **nominal** JSON (`data/missing_struts/octet_truss_9x9x9.json`),
-   whose Y maps to registered y with r=1.0000; registered coordinates are
-   rotated, so the layer cannot be found by thresholding registered y.
+   the JSON but not in the part. The sphere detector rediscovers it unprompted:
+   328 of its 349 missing struts lie there. The face is the max-Y layer of the
+   **nominal** JSON (`data/missing_struts/octet_truss_9x9x9.json`), whose Y maps
+   to registered y with r=1.0000; registered coordinates are rotated, so the
+   layer cannot be found by thresholding registered y.
 
 2. **The `registered_jsons/` alignment is not exact — it carries a ~0.8% x-scale
    error**, ~5.6 voxels of drift across the specimen, against struts only ~4
-   voxels thick. Symptom: flagged fraction climbing with x (5% near x≈200 to 80%
-   near x≈720). Two fixes, both verified: sample with a cylinder radius ≥7 so a
-   drifted strut still falls inside, or refit an affine (mean node offset
-   2.13 → 0.87 vox).
+   voxels thick. Symptom: flagged fraction climbing with x. Measured for the
+   sphere method at N=2, far-x band against the rest: 27.6% vs ~0.9% at r=4,
+   9.6% at r=5, 2.2% at r=6, 0.87% at r=7, 0.80% vs 0.33–0.58% at r=8. **The
+   radius must be ≥7.** The alternative fix, still unused, is refitting an
+   affine (mean node offset 2.13 → 0.87 vox).
 
-3. **Cylinders must exclude the strut ends.** Twelve struts meet at a junction
-   and the blob stays bright when any one is absent, so a full-span cylinder can
-   never register an interior strut as empty — after excluding the bottom face
-   it found 1 strut in 17460. Trimming 25% off each end restores sensitivity.
+3. **Never sample at a strut's endpoints.** Twelve struts meet at a junction and
+   the blob stays bright when any one is absent, so an endpoint probe answers a
+   question about the junction. The cylinder detector needed `--end-trim` for
+   this (untrimmed it found 1 strut in 17460); the bisection points are interior
+   by construction.
 
-  Statistics that do *not* work, both verified on real data: the cylinder **mean
-  intensity** (a solid/background mixture, so a healthy strut averages near the
-  volume Otsu itself — flags 35% at r=3, 50% at r=5), and **Otsu on the derived
-  area distribution** (modes are ~3%/97%, so it lands mid-population and flags
-  48%). Segment first at the volume Otsu, then count; cut on design geometry.
+4. **Only the midpoint can be sampled, which is why bisections are pinned to 1.**
+   Junction-local material reaches ~12 voxels along an absent strut's own axis
+   (33% of probes lit at 6 voxels, 2.3% at 10, 0% at 14). Against a 55.8-voxel
+   strut, the midpoint sits 27.9 voxels from either junction, so a radius-8
+   sphere spans 19.9–35.9 and clears that reach by ~8 voxels at both ends. N=2's
+   outer points sit at 14.0 voxels and would need r < 2, while the drift needs
+   r ≥ 7 — **no radius does both.** The symptom at N=2 is that an absent strut's
+   outer point gets lit by its own junction and the strut is demoted to
+   `partial`: of the 87 known-empty struts, 84 read all-dark at r=4 but only 21
+   at r=8, while **the midpoint was dark on all 87 at every radius**. The
+   midpoint carries the whole detection; the outer points only add a class that
+   junction bleed and a real break populate indistinguishably.
+
+**This scan detects absence, not integrity.** Two defect classes read as
+`present`, and a clean result is not evidence against either:
+
+- **Thin struts.** A maximum over a sphere saturates. The cylinder's
+  cross-section could in principle have caught them (8 of its 95 were flagged
+  but not empty) but that was never validated, and it cost a third free
+  parameter.
+- **Partial/broken struts.** A break that misses the midpoint leaves the sample
+  point bright. Recovering this needs a refit registration that permits a
+  narrower probe (mean node offset 2.13 → 0.87 vox), not a new threshold. The
+  summary JSON's `n_partial` is structurally zero at one sample point — check
+  `n_points_per_strut` before reading anything into it.
+
+Statistics that do *not* work, both verified on real data during the cylinder
+era and still worth not re-trying: the cylinder **mean intensity** (a
+solid/background mixture, so a healthy strut averages near the volume Otsu
+itself — flags 35% at r=3, 50% at r=5), and **Otsu on a derived per-strut
+distribution** (modes are ~3%/97%, so it lands mid-population and flags 48%).
+Cut against the full-volume Otsu, never against a statistic derived from the
+lattice.

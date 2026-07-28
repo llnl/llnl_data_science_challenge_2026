@@ -1,146 +1,171 @@
 # Strut flagging criteria
 
-How `src/strut_cylinder_segmentation.py` decides that a nominal strut is a
-missing candidate. Line references are to that file.
+How `src/strut_scan.py` decides that a nominal strut is missing or partial, and
+what the two classes are worth. This replaces the cylinder/cross-section
+detector that previously lived in `src/strut_cylinder_segmentation.py`; the
+comparison between the two is recorded at the bottom.
 
 ## The criterion
 
-One threshold on one derived quantity (`:428-429`):
+Sample each strut at points placed by recursive bisection of its
+junction-to-junction span, take the brightest voxel within `radius` of each, and
+call a point **dark** when that maximum falls below the **full-volume Otsu
+threshold**. Then:
 
-```python
-cut = args.area_fraction * NOMINAL_CROSS_SECTION_VOXELS   # 0.25 × 12.26 = 3.06 vox²
-missing_mask = area < cut
-```
+| Dark points | Class |
+|---|---|
+| all | `missing` |
+| some but not all | `partial` |
+| none | `present` |
 
-A strut is flagged when it carries **less than 25% of its nominal design
-cross-section**.
+That is the whole rule. There is no derived quantity, no per-strut normalization,
+and no cut fitted to the data — the threshold is the same full-volume Otsu the
+junction detector uses, measured where the balanced-bimodal assumption actually
+holds (11.3% material on this scan, threshold 40049).
 
-## How `area` is computed
+### Sample point placement
 
-### 1. Segment the volume once (`:382-383`)
-
-```python
-otsu_threshold = threshold_otsu(volume)      # 40049 for this scan
-segmentation = volume >= otsu_threshold      # 11.30% of voxels are material
-```
-
-This is the only place the Otsu threshold is used, and it acts on **voxel
-intensities**.
-
-### 2. Rasterize a cylinder along each strut (`cylinder_mask`, `:139-146`)
-
-Endpoints `p0`, `p1` are the strut's two junctions from the registered JSON,
-`u` is the unit vector along the strut, `L` its length, and `d` the offset of a
-candidate voxel from `p0`. A voxel is inside when both hold:
+`n_bisections` halvings leave `2**n - 1` points at the fractions `k / 2**n`:
 
 ```
-radial = |d - (d·u)u|  <=  radius
-end_trim·L  <=  d·u  <=  (1 - end_trim)·L
+n=1:        ●                  1/2
+n=2:    ●   ●   ●              1/4, 1/2, 3/4
+n=3:  ● ● ● ● ● ● ●            eighths
 ```
 
-The search is confined to the bounding box of the endpoints expanded by
-`radius` and clipped to the volume.
+**The MCP tool `scan_lattice_struts` fixes `n_bisections = 1`** — the midpoint
+alone — for the reason worked out below. At one sample point the `partial` class
+cannot arise, so the operative rule reduces to: a strut is `missing` when its
+midpoint is dark.
 
-### 3. Count and normalize (`:169-180`)
+**The endpoints are never sampled.** Twelve struts meet at a junction of this
+lattice and the resulting blob stays bright when any one of them is absent, so a
+probe at or near an endpoint answers a question about the junction, not the
+strut. This is the same problem the cylinder detector solved with `--end-trim`,
+and it is equally non-optional: an untrimmed full-span cylinder found 1 flagged
+strut in 17460.
 
-```python
-sampled_lengths = ‖end - start‖ * (1 - 2*end_trim)
-area = n_segmented / sampled_lengths
-```
-
-Dividing by the length *actually sampled* makes `area` a mean cross-section in
-vox², so it stays comparable across both radius and trim settings.
-
-## Where the nominal cross-section comes from
-
-`NOMINAL_CROSS_SECTION_VOXELS = π·(0.1·39.5/2)² = 12.26 vox²` (`:79`). It is
-built from two inputs, one read from the data and one inferred.
-
-### Thickness: read from the JSON
-
-Every strut in the lattice JSON carries `thickness: 0.1`, in design units. The
-set of distinct values across all 18468 struts is exactly `{0.1}`, so this is a
-single global constant rather than a per-strut property.
-
-### Scale: inferred from strut lengths
-
-No file states voxels-per-design-unit, so it is derived from the ratio of
-registered to nominal strut length. Both JSONs list the same struts in the same
-id order:
-
-```
-nominal length    = 1.4142 design units   (a √2 face diagonal, identical for all struts)
-registered length = 55.846 voxels         (identical for all struts)
-scale             = 55.846 / 1.4142 = 39.4888 voxels per design unit
-```
-
-The ratio is the same for every strut (min = max), as expected for a similarity
-registration. The script hardcodes this as `39.5`.
-
-### Conversion
-
-Reading `thickness` as a **diameter**:
-
-```
-diameter = 0.1 × 39.5 = 3.95 voxels
-area     = π × (3.95 / 2)² = 12.25 vox²
-```
-
-## Caveats on the nominal cross-section
-
-Both of the following move the cut, so they are worth knowing before trusting a
-flagged count.
-
-**Diameter-vs-radius is an inference, not stated in the JSON.** If `thickness`
-were a radius, the nominal area would be 48.99 vox² — exactly 4× larger — and
-the 25% cut would move from 3.06 to 12.25 vox². Two observations support the
-diameter reading:
-
-- The measured median area at radius 3 was 14.6 vox², close to 12.25 and nowhere
-  near 49.
-- A strut of radius 3.95 could not fit inside a radius-3 cylinder at all, yet
-  those cylinders were plainly capturing whole struts.
-
-**The 39.5 scale is a hardcoded literal.** The true ratio is 39.4888, so the
-constant carries ~0.03% error, which is negligible here. The real hazard is that
-it is fixed: on a lattice with different unit-cell spacing, or a scan at
-different resolution, it would silently produce a wrong cut. Computing it at
-runtime as `registered_length / nominal_length` — both already loaded — would
-remove that failure mode.
-
-## Related but separate statistic
-
-`empty_mask = stats["n_segmented"] == 0` (`:431`) counts cylinders containing no
-material at all. It is reported alongside the flag count and is a strict subset
-of the flagged set, but it is **not** the flagging criterion.
-
-## Parameters that materially change the result
+## The two free parameters
 
 | Parameter | Default | Effect |
 |---|---|---|
-| `--area-fraction` | 0.25 | The cut, as a fraction of nominal cross-section. |
-| `--end-trim` | **0.0** | Fraction of the span dropped at each end. |
-| `--radii` | 2 3 5 7 8 | Cylinder radii to sweep. |
-| `--keep-bottom-layer` | off | Include the machined-off bottom face. |
+| `radius` | 8 | Sampling sphere radius in voxels. |
+| `n_bisections` | 1 | Halvings of the span; `2**n - 1` sample points. Pinned to 1 by the MCP tool. |
 
-Two of these are not optional in practice:
+Nothing else. In particular there is no area cut, no end-trim, and no
+specimen-specific exclusion — `strut_scan` reports every flagged strut and
+suppresses nothing.
 
-- **`--end-trim` must be non-zero.** Twelve struts meet at a junction, and that
-  blob stays bright when any one of them is absent, so a full-span cylinder can
-  never register an interior strut as empty. With the bottom face excluded and
-  no trim, the detector found 1 flagged strut in 17460. `--end-trim 0.25`
-  restores sensitivity.
-- **Radius must be ≥7** to absorb the ~0.8% x-scale registration drift in the
-  `registered_jsons/` coordinates (~5.6 voxels across the specimen, against
-  struts only ~4 voxels thick).
+### Why the radius has to be about 8, and what that costs
 
-Because `end_trim` defaults to 0.0, reproducing the headline result requires
-passing it explicitly:
+The radius is pulled in two directions on this scan, and the two demands do not
+both fit.
 
-```bash
-python src/strut_cylinder_segmentation.py \
-    --radii 8 --tiff-radius 8 --end-trim 0.25 --suffix _nobottom_trim25
+**Drift pushes it up.** The `registered_jsons/` alignment carries a ~0.8%
+x-scale error, ~5.6 voxels of drift across the specimen, against struts only ~4
+voxels thick. A radius too small to cover it reads the drift as absence, and the
+symptom is a flagged fraction that climbs with x. Measured, at two bisections,
+as the flagged fraction (missing or partial) in four equal-width x bands:
+
+| radius | flagged | x band 0 | x band 1 | x band 2 | x band 3 |
+|---|---|---|---|---|---|
+| 4 | 1293 | 0.98% | 0.83% | 0.96% | **27.61%** |
+| 5 | 485 | 0.63% | 0.69% | 0.47% | **9.57%** |
+| 6 | 160 | 0.58% | 0.61% | 0.38% | 2.15% |
+| 7 | 105 | 0.58% | 0.61% | 0.36% | 0.87% |
+| 8 | 99 | 0.58% | 0.56% | 0.33% | 0.80% |
+
+The gradient is gone by radius 7–8.
+
+**Junction reach pushes it down.** Walking outward from a junction along a
+*known-absent* strut's own axis, any material found belongs to the junction and
+its other eleven struts. Measured over the 87 struts an independent detector
+found wholly empty, as the fraction of probes above Otsu:
+
+| distance out | 2 | 4 | 6 | 8 | 10 | 12 | 14 |
+|---|---|---|---|---|---|---|---|
+| probes lit | 77.0% | 59.8% | 33.3% | 11.5% | 2.3% | 0.6% | 0.0% |
+
+Junction-local material reaches about 12 voxels. This is what decides the
+bisection count.
+
+## Why the bisection count is 1
+
+Against a 55.8-voxel strut, the two demands above are compatible at one
+bisection and incompatible at two:
+
+| bisections | outer point sits | radius-8 sphere spans | clears the 12-voxel reach? |
+|---|---|---|---|
+| 1 | 27.9 vox from either junction | 19.9 – 35.9 | yes, by ~8 voxels at both ends |
+| 2 | 14.0 vox from a junction | 6.0 – 22.0 | no — would need `radius < 2` |
+
+At two bisections the outer sample point on a genuinely absent strut is often
+lit by the junction it points at, and the strut reads `partial` rather than
+`missing`. Over the same 87 known-empty struts, the dark-point patterns:
+
+| radius | (1,1,1) all dark | one outer point bright | midpoint dark |
+|---|---|---|---|
+| 4 | 84 | 3 | 87 |
+| 5 | 72 | 14 | 87 |
+| 6 | 52 | 34 | 87 |
+| 7 | 40 | 46 | 87 |
+| 8 | 21 | 60 | 87 |
+
+**The midpoint was dark on all 87 struts at every radius.** That is the column
+that settles it: the midpoint alone carries the whole detection, while the outer
+points only add a class that junction bleed and a real break populate
+indistinguishably. So the tool samples the midpoint and reports one class.
+
+Raising `n_bisections` is left in `scan_struts` as a module parameter, but on
+these specimens it cannot be used without the bleed. Recovering partial-strut
+sensitivity needs a refit registration that permits a narrower probe — not a
+different threshold or a different cut.
+
+## What this statistic cannot see
+
+Both of these read as `present`, and a clean result must not be reported as
+evidence against either:
+
+- **A thin strut.** A maximum over a sphere saturates, so a strut printed
+  under-thickness still has a bright voxel at its midpoint. The cylinder
+  detector's cross-section could in principle have caught these — 8 of its 95
+  flagged struts were flagged but not empty — but that capability was never
+  validated, and it cost three free parameters.
+- **A partial strut.** A break that does not cover the midpoint leaves the
+  single sample point bright. The scan bounds *absence*, not integrity.
+
+The summary JSON still carries `n_partial`, and at one sample point it is
+structurally zero. Read `n_points_per_strut` before drawing anything from it.
+
+## Comparison against the cylinder detector
+
+Both run on the `0point5dash1` scan with the machined-off bottom face excluded
+(1008 of 18468 struts), leaving 17460 scored. The cylinder configuration is the
+validated one: `--radii 8 --end-trim 0.25`, cut at 25% of the nominal
+cross-section.
+
+| | flagged | fully empty / missing |
+|---|---|---|
+| cylinder, r=8, trim 0.25 | 95 | 87 |
+| **sphere, N=1, r=8 (shipped)** | **97** | **97** |
+| sphere, N=2, r=8 | 99 | 21 missing + 78 partial |
+
+- **The shipped configuration recovers all 87 cylinder-empty struts** and adds
+  10 more, so it clears the agreed bar of ≥ 87 with no misses.
+- **It also contains all 95 struts the cylinder flagged, disagreeing on 2 of
+  17460 — both sphere-only, none cylinder-only.** The sphere flagged set is a
+  strict superset of the cylinder's. (At N=2 the same holds with 4
+  disagreements, so the relationship does not depend on the bisection count.)
+- Both bisection counts flag **all 24 struts incident to the two confirmed
+  missing junctions** (merged ids 513 and 2682).
+- The x-band flagged fractions are flat at r=8 (0.33–0.80%), so no residual
+  drift gradient survives.
+
+Reproduce with:
+
+```python
+from strut_scan import scan_struts, summarize_strut_scan
+result = scan_struts(volume, registered_json_path, radius=8)   # n_bisections=1
 ```
 
-That configuration gives 95 struts flagged (0.54%) and 87 fully empty (0.50%),
-against a 0.5% nominal of ~92 struts.
+or through the MCP tool `scan_lattice_struts`, which pins `n_bisections` to 1.

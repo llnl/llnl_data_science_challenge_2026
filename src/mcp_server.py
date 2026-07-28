@@ -33,6 +33,14 @@ from junction_scan import (
     summarize_scan,
     write_junction_csv,
 )
+from strut_scan import scan_struts, summarize_strut_scan, write_strut_csv
+
+# One bisection samples each strut at its midpoint alone -- the point furthest
+# from both junctions, and the only placement on this lattice for which a radius
+# wide enough to absorb the registration drift still clears the junctions' own
+# material. Fixed rather than exposed: a caller varying both it and the radius
+# would be tuning two knobs against the same evidence.
+STRUT_BISECTIONS = 1
 
 # Initialize the MCP server
 mcp = FastMCP("CT Segmentation")
@@ -246,8 +254,8 @@ def scan_lattice_junctions(
             f"Largest dark component: {summary['dark_components']['largest']} "
             f"junction(s) across {summary['dark_components']['n_components']} "
             f"component(s).",
-            _describe_worst_band(summary),
-            _describe_candidates(summary),
+            _describe_worst_band(summary["dark_fraction_by_band"], "junctions"),
+            _describe_candidates(summary["candidates"], "junction_id", "junction"),
         ]
 
         if write_marked_tiff:
@@ -261,6 +269,85 @@ def scan_lattice_junctions(
         return " ".join(lines)
     except Exception as exc:
         return f"Error scanning lattice junctions: {exc}"
+
+
+@mcp.tool()
+def scan_lattice_struts(
+    volume_path: str,
+    registered_json_path: str,
+    output_dir: str,
+    radius: int = 8,
+) -> str:
+    """Score every lattice strut against a CT volume and report the missing ones.
+
+    Samples each strut at the **midpoint** of its junction-to-junction span,
+    taking the brightest voxel within ``radius``, and calls the strut missing
+    when that maximum falls below the full-volume Otsu threshold. The midpoint
+    is the point furthest from both junctions, whose own material stays bright
+    when any one of their twelve struts is absent.
+
+    Two things this cannot see, neither of which a clean result rules out:
+
+    - **A thin strut.** The statistic is a maximum, so a strut that is present
+      but under-thickness still reads as present.
+    - **A partial strut.** A break that does not cover the midpoint leaves the
+      sample point bright. Sampling more of the span would need points closer to
+      the junctions than their material reaches, so on these specimens it is not
+      currently available.
+
+    Run the junction scan first: this tool knows nothing about the specimen and
+    suppresses nothing, so struts belonging to a systematic region are separated
+    out by looking their endpoint junctions up in the junction scan's results.
+
+    Args:
+        volume_path: Existing 3D CT volume as ``.npy``, ``.tif``, or ``.tiff``.
+        registered_json_path: Lattice JSON registered to this volume's voxel
+            coordinates. Nominal or raw design JSONs are not aligned and will
+            flag nearly everything.
+        output_dir: Directory for the CSV and summary JSON. Both filenames carry
+            the radius, so repeated calls at different radii do not overwrite.
+        radius: Sampling sphere radius in voxels. Use the radius settled on for
+            the junction scan of the same volume. Too small and residual
+            registration drift reads as absence; too large and the probe reaches
+            the junctions at either end and hides a real absence.
+
+    Returns:
+        A status message with the counts, the strongest spatial signal, the
+        candidate strut ids, and the output paths, or an error message.
+    """
+    try:
+        volume_input = _validate_volume_input(volume_path)
+        registered_path = _validate_json_input(registered_json_path, "registered_json_path")
+        output_directory = Path(output_dir).expanduser()
+
+        volume = _load_volume(volume_input)
+        result = scan_struts(
+            volume, registered_path, radius=radius, n_bisections=STRUT_BISECTIONS
+        )
+        summary = summarize_strut_scan(result)
+
+        output_directory.mkdir(parents=True, exist_ok=True)
+        csv_path = write_strut_csv(
+            output_directory / f"strut_scan_r{result.radius}.csv", result
+        )
+        summary_path = output_directory / f"strut_scan_r{result.radius}_summary.json"
+        summary_path.write_text(json.dumps(summary, indent=2))
+
+        lines = [
+            f"Scanned {registered_path.name} against {volume_input.name} at radius "
+            f"{result.radius}, sampling each strut's midpoint.",
+            f"{summary['n_struts']} struts across {summary['n_junctions']} merged "
+            f"junctions; full-volume Otsu threshold "
+            f"{summary['otsu_threshold']:.0f}.",
+            f"{summary['n_missing']} missing "
+            f"({_format_fraction(summary['missing_fraction'])}).",
+            _describe_worst_band(summary["missing_fraction_by_band"], "struts"),
+            _describe_candidates(summary["candidates"], "strut_id", "strut"),
+            f"Per-strut CSV: {csv_path}; summary JSON: {summary_path}.",
+        ]
+        return " ".join(lines)
+    except Exception as exc:
+        return f"Error scanning lattice struts: {exc}"
 
 
 @mcp.tool()
@@ -339,41 +426,41 @@ def _format_fraction(fraction: float | None) -> str:
     return "n/a" if fraction is None else f"{fraction:.2%}"
 
 
-def _describe_worst_band(summary: dict) -> str:
-    """Name the single band with the highest dark fraction across all three axes.
+def _describe_worst_band(bands_by_axis: dict, noun: str) -> str:
+    """Name the single band with the highest flagged fraction across all axes.
 
-    A dark set concentrated in one band is the cheapest systematic signal there
-    is: drift shows up as a gradient along one axis, a missing region as one hot
-    band, and stochastic absence as no band standing out at all.
+    A flagged set concentrated in one band is the cheapest systematic signal
+    there is: drift shows up as a gradient along one axis, a missing region as
+    one hot band, and stochastic absence as no band standing out at all.
     """
     ranked = [
-        (band["dark_fraction"], name, band)
-        for name, bands in summary["dark_fraction_by_band"].items()
+        (band["flagged_fraction"], name, band)
+        for name, bands in bands_by_axis.items()
         for band in bands
-        if band["dark_fraction"] is not None
+        if band["flagged_fraction"] is not None
     ]
     if not ranked:
-        return "No junctions to band."
+        return f"No {noun} to band."
     fraction, name, band = max(ranked, key=lambda item: item[0])
     return (
-        f"Highest dark fraction in any band: {fraction:.2%} "
-        f"({name} {band['lo']:.0f}-{band['hi']:.0f}, {band['n_dark']}/"
-        f"{band['n_junctions']})."
+        f"Highest flagged fraction in any band: {fraction:.2%} "
+        f"({name} {band['lo']:.0f}-{band['hi']:.0f}, {band['n_flagged']}/"
+        f"{band['n_total']})."
     )
 
 
 CANDIDATE_ID_LIMIT = 20
 
 
-def _describe_candidates(summary: dict) -> str:
+def _describe_candidates(candidates: list, id_key: str, noun: str) -> str:
     """List candidate ids, truncating to keep the status message readable."""
-    ids = [candidate["junction_id"] for candidate in summary["candidates"]]
+    ids = [candidate[id_key] for candidate in candidates]
     if not ids:
-        return "No candidate junctions."
+        return f"No candidate {noun}."
     if len(ids) > CANDIDATE_ID_LIMIT:
         shown = ", ".join(str(i) for i in ids[:CANDIDATE_ID_LIMIT])
         return f"First {CANDIDATE_ID_LIMIT} candidate ids: {shown} (see CSV for all)."
-    return f"Candidate junction ids: {', '.join(str(i) for i in ids)}."
+    return f"Candidate {noun} ids: {', '.join(str(i) for i in ids)}."
 
 
 def _validate_json_input(filepath: str, parameter: str) -> Path:

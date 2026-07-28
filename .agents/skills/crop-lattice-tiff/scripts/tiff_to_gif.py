@@ -13,20 +13,31 @@ from PIL import Image
 def write_animation(
     input_path: Path, output_path: Path, frame_stride: int, max_dimension: int
 ) -> int:
-    """Write every ``frame_stride`` axial slice as a grayscale GIF frame."""
+    """Write every ``frame_stride`` axial slice as a GIF frame.
+
+    Grayscale stacks are contrast-stretched to the 1st-99.5th percentile. An
+    RGB stack is passed through untouched: it is already uint8 and carries
+    marked-up overlays whose colors a per-channel stretch would distort.
+    """
     if frame_stride < 1:
         raise ValueError("frame_stride must be at least 1")
     with tifffile.TiffFile(input_path) as source:
         frames = [source.pages[index].asarray() for index in range(0, len(source.pages), frame_stride)]
-    lower, upper = np.percentile(np.stack(frames), (1, 99.5))
-    if upper <= lower:
-        upper = lower + 1
+    is_rgb = frames[0].ndim == 3 and frames[0].shape[-1] == 3
+    lower, upper = 0.0, 1.0
+    if not is_rgb:
+        lower, upper = np.percentile(np.stack(frames), (1, 99.5))
+        if upper <= lower:
+            upper = lower + 1
     images = []
     for frame in frames:
-        image = Image.fromarray(
-            np.round(np.clip((frame.astype(np.float32) - lower) / (upper - lower), 0, 1) * 255).astype(np.uint8),
-            mode="L",
-        )
+        if is_rgb:
+            image = Image.fromarray(frame.astype(np.uint8), mode="RGB")
+        else:
+            image = Image.fromarray(
+                np.round(np.clip((frame.astype(np.float32) - lower) / (upper - lower), 0, 1) * 255).astype(np.uint8),
+                mode="L",
+            )
         if max(image.size) > max_dimension:
             scale = max_dimension / max(image.size)
             image = image.resize(

@@ -1,6 +1,6 @@
 # Scan-Junctions Evaluation Rubric: Phantom Junctions
 
-The attached `junction_scan_report.md` was produced by the `scan-junctions`
+The attached `lattice_scan_report.md` was produced by the `scan-lattice`
 skill run against a lattice JSON carrying **phantom junctions that have no
 material in the scan**: the outermost unit-cell layer was copied and shifted one
 cell pitch further out, into empty air beyond the specimen. The CT volume is

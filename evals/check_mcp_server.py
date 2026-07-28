@@ -29,6 +29,7 @@ EXPECTED_TOOLS = {
     "convert_tiff_volume",
     "graph_skeleton",
     "scan_lattice_junctions",
+    "scan_lattice_struts",
     "segment_ct_dataset",
     "skeletonize",
     "visualize_junction_overlay",

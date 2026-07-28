@@ -1,6 +1,6 @@
 """Manufacture deliberately broken lattice JSONs for evaluating a junction scan.
 
-The scan-junctions workflow is supposed to catch *systematic* problems before it
+The scan-lattice workflow is supposed to catch *systematic* problems before it
 reports individual missing junctions. Neither failure mode occurs in the one
 scan available locally, so this script injects them into a copy of a registered
 JSON. The CT volume is never touched -- what changes is the lattice's claim

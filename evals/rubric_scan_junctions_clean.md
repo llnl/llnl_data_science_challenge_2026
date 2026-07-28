@@ -1,6 +1,6 @@
 # Scan-Junctions Evaluation Rubric: Unmodified Scan
 
-The attached `junction_scan_report.md` was produced by the `scan-junctions`
+The attached `lattice_scan_report.md` was produced by the `scan-lattice`
 skill run against the reference specimen with its own registered lattice JSON,
 unmodified:
 

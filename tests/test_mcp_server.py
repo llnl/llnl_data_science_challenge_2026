@@ -265,6 +265,87 @@ def test_scan_lattice_junctions_writes_a_marked_tiff(
     assert tifffile.imread(marked_path).shape == synthetic_lattice.volume.shape + (3,)
 
 
+def test_scan_lattice_struts_reports_the_absent_struts(
+    strut_lattice, tmp_path: Path
+) -> None:
+    output_dir = tmp_path / "scan"
+    result = mcp_server.scan_lattice_struts(
+        str(strut_lattice.volume_path),
+        str(strut_lattice.registered_json_path),
+        str(output_dir),
+        radius=3,
+    )
+
+    assert "Error" not in result
+    # One bisection is fixed by the tool, not a caller's choice.
+    assert "sampling each strut's midpoint" in result
+    assert "54 struts across 27 merged junctions" in result
+    # The part-painted strut has a dark midpoint, so at one bisection it is
+    # indistinguishable from the wholly absent one -- the sensitivity this
+    # setting gives up in exchange for keeping the probe clear of the junctions.
+    assert "2 missing (3.70%)." in result
+
+    csv_path = output_dir / "strut_scan_r3.csv"
+    summary_path = output_dir / "strut_scan_r3_summary.json"
+    assert str(csv_path) in result and str(summary_path) in result
+
+    summary = json.loads(summary_path.read_text())
+    assert summary["n_bisections"] == 1
+    assert summary["n_points_per_strut"] == 1
+    assert summary["n_missing"] == 2
+    # Partial cannot arise from a single sample point; the summary must not
+    # imply the check ran and came back clean.
+    assert summary["n_partial"] == 0
+    assert len(csv_path.read_text().splitlines()) == 55
+
+
+def test_scan_lattice_struts_tags_outputs_by_radius(
+    strut_lattice, tmp_path: Path
+) -> None:
+    """A radius sweep must not overwrite its own earlier passes."""
+    output_dir = tmp_path / "scan"
+    for radius in (2, 3):
+        mcp_server.scan_lattice_struts(
+            str(strut_lattice.volume_path),
+            str(strut_lattice.registered_json_path),
+            str(output_dir),
+            radius=radius,
+        )
+
+    assert {path.name for path in output_dir.glob("*.csv")} == {
+        "strut_scan_r2.csv",
+        "strut_scan_r3.csv",
+    }
+
+
+@pytest.mark.parametrize(
+    ("keyword", "message"),
+    [
+        ({"volume_path": "missing.npy"}, "volume file not found"),
+        ({"registered_json_path": "lattice.txt"}, "must have a .json extension"),
+        ({"radius": 0}, "radius must be a positive"),
+    ],
+)
+def test_scan_lattice_struts_errors(
+    strut_lattice, tmp_path: Path, keyword: dict, message: str
+) -> None:
+    (tmp_path / "lattice.txt").write_text("not a lattice")
+    path_keys = {"volume_path", "registered_json_path"}
+    arguments = {
+        "volume_path": str(strut_lattice.volume_path),
+        "registered_json_path": str(strut_lattice.registered_json_path),
+        "output_dir": str(tmp_path / "scan"),
+        **{
+            key: str(tmp_path / value) if key in path_keys else value
+            for key, value in keyword.items()
+        },
+    }
+
+    result = mcp_server.scan_lattice_struts(**arguments)
+    assert result.startswith("Error scanning lattice struts:")
+    assert message in result
+
+
 @pytest.mark.parametrize("mode", ["slice", "mip"])
 def test_visualize_junction_overlay_renders(
     synthetic_lattice, tmp_path: Path, mode: str

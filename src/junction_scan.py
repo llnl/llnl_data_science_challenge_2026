@@ -30,7 +30,7 @@ this module does not classify.
 
 A junction goes dark only when *every* incident strut is absent, and an interior
 junction of this lattice has twelve. Missing single struts leave both endpoints
-bright and must be found at strut level -- see ``strut_cylinder_segmentation``.
+bright and must be found at strut level -- see ``strut_scan``.
 
 Nothing here knows anything about a particular specimen. The module measures and
 describes; deciding that a given region is absent from the *part* rather than
@@ -203,15 +203,20 @@ def dark_component_sizes(
     return sizes
 
 
-def _band_stats(
-    coordinate: np.ndarray, dark: np.ndarray, n_bands: int
+def band_stats(
+    coordinate: np.ndarray, flagged: np.ndarray, n_bands: int
 ) -> list[dict]:
-    """Split the junctions into equal-width bands along one coordinate.
+    """Split the lattice into equal-width bands along one coordinate.
 
     Bands are equal *width*, not equal count, because the questions being asked
     of them are geometric -- "is one side of the specimen dark" -- and because
     a lattice puts many junctions at identical coordinates, which collapses
     quantile edges.
+
+    ``coordinate`` and ``flagged`` are per-element arrays of the same length.
+    The elements are junctions here and struts in ``strut_scan``, so the band
+    records name neither: each carries ``n_total``, ``n_flagged`` and
+    ``flagged_fraction``.
     """
     if coordinate.size == 0:
         return []
@@ -225,14 +230,14 @@ def _band_stats(
     for band in range(n_bands):
         in_band = index == band
         n = int(in_band.sum())
-        n_dark = int((in_band & dark).sum())
+        n_flagged = int((in_band & flagged).sum())
         bands.append(
             {
                 "lo": float(edges[band]),
                 "hi": float(edges[band + 1]),
-                "n_junctions": n,
-                "n_dark": n_dark,
-                "dark_fraction": (n_dark / n) if n else None,
+                "n_total": n,
+                "n_flagged": n_flagged,
+                "flagged_fraction": (n_flagged / n) if n else None,
             }
         )
     return bands
@@ -336,7 +341,7 @@ def summarize_scan(result: JunctionScanResult, n_bands: int = 4) -> dict:
             "median": float(np.median(result.intensities)),
         },
         "dark_fraction_by_band": {
-            name: _band_stats(result.positions_xyz[:, column], dark, n_bands)
+            name: band_stats(result.positions_xyz[:, column], dark, n_bands)
             for name, column in (("x", 0), ("y", 1), ("z", 2))
         },
         "dark_fraction_by_octant": octants,

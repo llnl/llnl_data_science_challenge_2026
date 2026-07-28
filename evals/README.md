@@ -7,11 +7,11 @@ judged, and it returns `{"reasoning": ..., "score": 0-5}`.
 | Rubric | Judges |
 |---|---|
 | `rubric_segmentation_1.md` | A segmentation result image against a ground-truth image. |
-| `rubric_scan_junctions_clean.md` | A `scan-junctions` report on the unmodified reference scan. |
-| `rubric_scan_junctions_rotation.md` | A `scan-junctions` report on a deliberately misregistered lattice. |
-| `rubric_scan_junctions_phantoms.md` | A `scan-junctions` report on a lattice with junctions that have no material. |
+| `rubric_scan_junctions_clean.md` | A `scan-lattice` report on the unmodified reference scan. |
+| `rubric_scan_junctions_rotation.md` | A `scan-lattice` report on a deliberately misregistered lattice. |
+| `rubric_scan_junctions_phantoms.md` | A `scan-lattice` report on a lattice with junctions that have no material. |
 
-## Testing the scan-junctions skill
+## Testing the scan-lattice skill
 
 The skill's job is to catch systematic problems *before* reporting individual
 missing junctions. The one scan available locally exhibits only one systematic
@@ -57,14 +57,14 @@ component, and their ratio:
 
 ### 3. Judge each report
 
-Hand the run's `junction_scan_report.md` to a judge model together with the
+Hand the run's `lattice_scan_report.md` to a judge model together with the
 matching rubric, and record the returned JSON.
 
 ## Running under Codex
 
-The skill lives in `.agents/skills/scan-junctions/`, which Codex discovers
-directly. Either invoke `$scan-junctions` in a normal session, or use the
-subagent at `.codex/agents/scan_junctions_agent.toml`, which additionally pins
+The skill lives in `.agents/skills/scan-lattice/`, which Codex discovers
+directly. Either invoke `$scan-lattice` in a normal session, or use the
+subagent at `.codex/agents/scan_lattice_agent.toml`, which additionally pins
 the output-directory contract and a 6-scan budget.
 
 Two setup steps are required, both outside this repository. **Both are done on
@@ -111,8 +111,8 @@ one with the five original tools and no junction tools.
 
 ## Running under Claude Code
 
-`.claude/skills/scan-junctions` is a symlink to the same skill directory, and
-`.mcp.json` registers the server, so `/scan-junctions` works from a session
+`.claude/skills/scan-lattice` is a symlink to the same skill directory, and
+`.mcp.json` registers the server, so `/scan-lattice` works from a session
 started in the repository root. `.mcp.json` invokes plain `python`, which must
 resolve to an environment with the requirements installed — check it the same
 way, with `python evals/check_mcp_server.py`.

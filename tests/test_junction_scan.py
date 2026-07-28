@@ -153,8 +153,8 @@ def test_summary_bands_partition_the_junctions(synthetic_lattice):
     for axis in ("x", "y", "z"):
         bands = summary["dark_fraction_by_band"][axis]
         assert len(bands) == 3
-        assert sum(band["n_junctions"] for band in bands) == summary["n_junctions"]
-        assert sum(band["n_dark"] for band in bands) == summary["n_dark"]
+        assert sum(band["n_total"] for band in bands) == summary["n_junctions"]
+        assert sum(band["n_flagged"] for band in bands) == summary["n_dark"]
 
     octants = summary["dark_fraction_by_octant"]
     assert len(octants) == 8
@@ -171,7 +171,7 @@ def test_summary_bands_localize_a_missing_face(synthetic_lattice):
 
     summary = summarize_scan(faced, n_bands=3)
     y_bands = summary["dark_fraction_by_band"]["y"]
-    assert y_bands[-1]["dark_fraction"] == 1.0
+    assert y_bands[-1]["flagged_fraction"] == 1.0
     # The nine face junctions plus the pre-existing dark one, which is a strut
     # away from the face and so joins its component -- a real property of the
     # statistic worth pinning: an isolated defect touching a systematic region

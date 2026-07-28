@@ -48,6 +48,8 @@ class SyntheticLattice:
     n_junctions: int
     n_struts: int
     pitch: int
+    missing_strut_id: int | None = None
+    partial_strut_id: int | None = None
 
 
 def _paint_sphere(material: np.ndarray, center_xyz, radius: float) -> None:
@@ -89,6 +91,19 @@ def _paint_cylinder(
     material[z0:z1, y0:y1, x0:x1] |= inside
 
 
+def _edge_index(edges: list, cell_pair) -> int | None:
+    """Locate a cell pair in the edge list, which is also the JSON's strut order.
+
+    Struts are never merged, so the index returned here is the strut id every
+    scan reports.
+    """
+    if cell_pair is None:
+        return None
+    if cell_pair not in edges:
+        raise ValueError(f"{cell_pair} is not a strut of this lattice")
+    return edges.index(cell_pair)
+
+
 def make_synthetic_lattice(
     tmp_path: Path,
     grid: int = 3,
@@ -98,6 +113,9 @@ def make_synthetic_lattice(
     junction_radius: float = 2.5,
     strut_radius: float = 1.8,
     dark_cell: tuple[int, int, int] | None = (1, 1, 1),
+    missing_strut: tuple[tuple[int, int, int], tuple[int, int, int]] | None = None,
+    partial_strut: tuple[tuple[int, int, int], tuple[int, int, int]] | None = None,
+    partial_fraction: float = 0.2,
     json_offset: tuple[float, float, float] = (0.0, 0.0, 0.0),
     seed: int = 0,
 ) -> SyntheticLattice:
@@ -113,6 +131,15 @@ def make_synthetic_lattice(
         strut_radius: Radius of the capsule painted along each strut.
         dark_cell: Grid cell whose blob and incident struts are omitted, so the
             junction reads as absent. None paints a defect-free lattice.
+        missing_strut: Cell pair whose capsule is not painted at all, leaving
+            both endpoint junctions intact. This is the strut-level defect: a
+            junction stays bright as long as one other strut reaches it, so
+            only a strut-level probe can see this.
+        partial_strut: Cell pair whose capsule is painted over only the first
+            ``partial_fraction`` of its span, measured from the first cell.
+        partial_fraction: How much of a ``partial_strut`` is painted. The
+            default leaves material around the quarter-span sample point and
+            none around the half and three-quarter ones.
         json_offset: Shift applied to the JSON positions only, not the volume.
             This is how registration error is simulated: the lattice is
             described as sitting somewhere the material is not. Offsetting along
@@ -139,16 +166,21 @@ def make_synthetic_lattice(
             if neighbor in position_of:
                 edges.append((cell, neighbor))
 
+    missing_strut_id = _edge_index(edges, missing_strut)
+    partial_strut_id = _edge_index(edges, partial_strut)
+
     material = np.zeros(shape, dtype=bool)
     for cell, position in position_of.items():
         if cell != dark_cell:
             _paint_sphere(material, position, junction_radius)
-    for first, second in edges:
-        if dark_cell in (first, second):
+    for index, (first, second) in enumerate(edges):
+        if dark_cell in (first, second) or index == missing_strut_id:
             continue
-        _paint_cylinder(
-            material, position_of[first], position_of[second], strut_radius
-        )
+        start = np.array(position_of[first], dtype=float)
+        end = np.array(position_of[second], dtype=float)
+        if index == partial_strut_id:
+            end = start + partial_fraction * (end - start)
+        _paint_cylinder(material, start, end, strut_radius)
 
     # Blurring the binary mask puts partial-volume voxels along every surface,
     # which is both what a real reconstruction looks like and what keeps Otsu
@@ -217,6 +249,8 @@ def make_synthetic_lattice(
         n_junctions=len(cells),
         n_struts=len(struts),
         pitch=pitch,
+        missing_strut_id=missing_strut_id,
+        partial_strut_id=partial_strut_id,
     )
 
 
@@ -224,3 +258,28 @@ def make_synthetic_lattice(
 def synthetic_lattice(tmp_path: Path) -> SyntheticLattice:
     """A 3x3x3 lattice in a 48^3 volume with exactly one junction left dark."""
     return make_synthetic_lattice(tmp_path)
+
+
+# The strut probe needs room the junction probe does not. Its outermost sample
+# points sit a quarter of a span from a junction, so at the 14-voxel pitch above
+# any sphere wide enough to be useful would reach the junction blob and no strut
+# could ever read as absent. The real specimen's junctions are 55.8 voxels apart
+# with ~4-voxel struts; this keeps that proportion.
+STRUT_LATTICE_PITCH = 40
+STRUT_LATTICE_RADIUS = 3
+MISSING_STRUT_CELLS = ((0, 0, 0), (1, 0, 0))
+PARTIAL_STRUT_CELLS = ((0, 1, 0), (1, 1, 0))
+
+
+@pytest.fixture
+def strut_lattice(tmp_path: Path) -> SyntheticLattice:
+    """A lattice with every junction intact, one strut absent and one part-painted."""
+    return make_synthetic_lattice(
+        tmp_path,
+        pitch=STRUT_LATTICE_PITCH,
+        origin=12,
+        size=104,
+        dark_cell=None,
+        missing_strut=MISSING_STRUT_CELLS,
+        partial_strut=PARTIAL_STRUT_CELLS,
+    )

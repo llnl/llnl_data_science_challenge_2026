@@ -1,6 +1,6 @@
 # Scan-Junctions Evaluation Rubric: Rotated Lattice
 
-The attached `junction_scan_report.md` was produced by the `scan-junctions`
+The attached `lattice_scan_report.md` was produced by the `scan-lattice`
 skill run against a **deliberately misregistered** lattice: the registered JSON
 was rotated about the lattice centroid by a small angle, displacing outer
 junctions by roughly 15–20 voxels while leaving the centre nearly fixed. The CT
