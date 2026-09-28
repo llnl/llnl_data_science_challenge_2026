@@ -1,1 +1,0 @@
-this is the octet_truss_unit_cell_no_defects_0256_xray_recon dataset

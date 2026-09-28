@@ -1,0 +1,55 @@
+{
+  "source_inventory": "part2/stage_2a_developer_output/all_struts_inventory.csv",
+  "strut_count": 18468,
+  "measure": "occupancy-derived effective diameter proxy; not direct cross-sectional metrology",
+  "formula": "2 * nominal_radius_um * sqrt(ct_material_occupancy)",
+  "voxel_size_um": 58.09,
+  "nominal_radius_voxels": 6.0,
+  "reference_diameter_um": 697.08,
+  "reference_population": "classification == Nominal",
+  "threshold_rule": "overly thin < nominal-class 5th percentile; overly thick > nominal-class 95th percentile",
+  "nominal_reference": {
+    "count": 17746,
+    "occupancy_median": 0.23945025354623795,
+    "occupancy_p05": 0.09097947925329208,
+    "occupancy_p95": 0.6114014685153961,
+    "thickness_proxy_median_um": 341.1066904061063,
+    "thin_cutoff_um": 210.25887959931106,
+    "thick_cutoff_um": 545.0619445739487
+  },
+  "screening_counts": {
+    "overly_thin": 1601,
+    "overly_thick": 888,
+    "within_reference": 15979
+  },
+  "screening_percentages": {
+    "overly_thin": 8.66904916612519,
+    "overly_thick": 4.808317089018843
+  },
+  "by_classification": {
+    "Expected_Missing_But_Material_Present": {
+      "count": 5,
+      "overly_thin": 3,
+      "overly_thick": 0,
+      "median_thickness_proxy_um": 183.50459309955392
+    },
+    "Missing_Intentional": {
+      "count": 87,
+      "overly_thin": 87,
+      "overly_thick": 0,
+      "median_thickness_proxy_um": 38.79407561429044
+    },
+    "Missing_Unintentional": {
+      "count": 630,
+      "overly_thin": 630,
+      "overly_thick": 0,
+      "median_thickness_proxy_um": 0.0
+    },
+    "Nominal": {
+      "count": 17746,
+      "overly_thin": 881,
+      "overly_thick": 888,
+      "median_thickness_proxy_um": 341.1066904061063
+    }
+  }
+}

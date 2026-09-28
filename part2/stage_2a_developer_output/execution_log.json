@@ -1,0 +1,141 @@
+{
+  "elapsed_seconds": 96.129,
+  "scan_shape_zyx": [
+    761,
+    815,
+    837
+  ],
+  "scan_dtype": ">u2",
+  "memory_strategy": "full TIFF memmap; 2x edge sampling; 4x dense masks/plots; streamed STL facet hashing",
+  "parameters": {
+    "analysis_downsample": 2,
+    "mask_downsample": 2,
+    "tube_radius_full_resolution_voxels": 6.0,
+    "tube_radius_um": 348.54,
+    "trim_fraction_each_endpoint": 0.2,
+    "longitudinal_stations": 21,
+    "empty_station_material_fraction": 0.05,
+    "minimum_mask_component_downsampled_voxels": 4,
+    "cad_surface_clearance_source_voxels": 2.0,
+    "otsu_threshold": 40081.0,
+    "missing_occupancy_cutoff": 0.08,
+    "expected_cad_supported_occupancy_cutoff": 0.04297328814864163
+  },
+  "dual_cad": {
+    "permutation": [
+      0,
+      2,
+      1
+    ],
+    "signs": [
+      -1,
+      -1,
+      -1
+    ],
+    "graph_pitch_stl_units": 2.25,
+    "stl_triangle_centroid_stride": 4,
+    "baseline_triangles": 3514642,
+    "expected_triangles": 3498656,
+    "mapped_unique_expected_ids": 92,
+    "mean_expected_occupancy": 0.016647307202219963,
+    "mean_expected_occupancy_rank": 745.3369565217391,
+    "overlap_with_lowest_1pct_ct_occupancy": 6,
+    "expected_clearance_increase_stl_units_percentiles": [
+      0.5966296836348259,
+      0.8203590232008935,
+      0.88977039382313,
+      0.9682119635042655,
+      1.280320224246567
+    ],
+    "baseline_surface_distance_stl_units_percentiles": [
+      0.01904864383823369,
+      0.09511939223475215,
+      0.1313051591179924,
+      0.1846339694216544,
+      0.27575621118353205
+    ],
+    "expected_surface_distance_stl_units_percentiles": [
+      0.7998335428632092,
+      0.9791331335872673,
+      1.0321695110645903,
+      1.1034872010402004,
+      1.4308662167331492
+    ],
+    "stl_bounds_min": [
+      -20.743635177612305,
+      -25.520002365112305,
+      -20.74884605407715
+    ],
+    "stl_bounds_max": [
+      20.749141693115234,
+      25.520002365112305,
+      20.74677276611328
+    ]
+  },
+  "dual_cad_mapping": {
+    "permutation": [
+      0,
+      2,
+      1
+    ],
+    "signs": [
+      -1,
+      -1,
+      -1
+    ],
+    "graph_pitch_stl_units": 2.25,
+    "stl_triangle_centroid_stride": 4,
+    "baseline_triangles": 3514642,
+    "expected_triangles": 3498656,
+    "mapped_unique_expected_ids": 92,
+    "mean_expected_occupancy": 0.016647307202219963,
+    "mean_expected_occupancy_rank": 745.3369565217391,
+    "overlap_with_lowest_1pct_ct_occupancy": 6,
+    "expected_clearance_increase_stl_units_percentiles": [
+      0.5966296836348259,
+      0.8203590232008935,
+      0.88977039382313,
+      0.9682119635042655,
+      1.280320224246567
+    ],
+    "baseline_surface_distance_stl_units_percentiles": [
+      0.01904864383823369,
+      0.09511939223475215,
+      0.1313051591179924,
+      0.1846339694216544,
+      0.27575621118353205
+    ],
+    "expected_surface_distance_stl_units_percentiles": [
+      0.7998335428632092,
+      0.9791331335872673,
+      1.0321695110645903,
+      1.1034872010402004,
+      1.4308662167331492
+    ],
+    "stl_bounds_min": [
+      -20.743635177612305,
+      -25.520002365112305,
+      -20.74884605407715
+    ],
+    "stl_bounds_max": [
+      20.749141693115234,
+      25.520002365112305,
+      20.74677276611328
+    ]
+  },
+  "classification_counts": {
+    "Nominal": 17746,
+    "Missing_Intentional": 87,
+    "Expected_Missing_But_Material_Present": 5,
+    "Missing_Unintentional": 630
+  },
+  "candidate_mask_components_before_filter": 518,
+  "candidate_mask_voxels_after_filter": 3897608,
+  "excess_mask_components_before_filter": 4054,
+  "excess_mask_voxels_after_filter": 301338,
+  "sample_offsets_per_station": 123,
+  "clipped_tube_samples": 0,
+  "median_strut_occupancy": 0.23422376811504364,
+  "physical_3x3x3_noise_floor_mm3": 0.005292585633483001,
+  "template_directory": "/home/hannahdc/llnl_data_science_challenge_2026/PacificVisDatasets/octet unit cell with defects"
+}

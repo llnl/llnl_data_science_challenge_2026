@@ -1,0 +1,19 @@
+{
+  "wrapper": "/home/hannahdc/llnl_data_science_challenge_2026/part2/rerun_stage2a_candidate_registration.py",
+  "unchanged_pipeline": "/home/hannahdc/llnl_data_science_challenge_2026/part2/stage2a_missing_strut_pipeline.py",
+  "registration_input": "/home/hannahdc/llnl_data_science_challenge_2026/part2/registratiion_alignment_check/candidate_affine_registered.json",
+  "output_directory": "/home/hannahdc/llnl_data_science_challenge_2026/part2/registratiion_alignment_check/stage2a_candidate_registration_output",
+  "original_registration_preserved": true,
+  "prior_stage2a_output_preserved": true,
+  "parameters": {
+    "analysis_downsample": 2,
+    "mask_downsample": 2,
+    "tube_radius_voxels": 6.0,
+    "trim_fraction": 0.2,
+    "stations": 21,
+    "empty_station_fraction": 0.05,
+    "min_mask_component_voxels": 4,
+    "cad_clearance_voxels": 2.0,
+    "iteration": 1
+  }
+}

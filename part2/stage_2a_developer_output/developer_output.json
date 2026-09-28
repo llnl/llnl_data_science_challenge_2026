@@ -1,0 +1,26 @@
+{
+  "script_status": "success",
+  "executed_script_path": "/home/hannahdc/llnl_data_science_challenge_2026/part2/stage2a_missing_strut_pipeline.py",
+  "output_directory": "stage_2a_developer_output/",
+  "extracted_features": {
+    "total_struts_analyzed": 18468,
+    "total_defects_found": 722,
+    "all_struts_inventory_csv": "all_struts_inventory.csv",
+    "defect_summary_csv": "defect_summary.csv"
+  },
+  "validation_summary": {
+    "stage_2b_status": "PASSED",
+    "total_revisions_attempted": 1
+  },
+  "artifacts": {
+    "markdown_report_path": "report.md",
+    "json_output_path": "developer_output.json",
+    "visualization_paths": [
+      "registration_overlay.png",
+      "intensity_threshold_histogram.png",
+      "missing_strut_heatmap.png",
+      "strut_anomaly_histograms.png"
+    ]
+  },
+  "execution_logs": "execution_log.json"
+}

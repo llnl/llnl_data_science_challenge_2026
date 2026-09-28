@@ -1,0 +1,63 @@
+{
+  "created_utc": "2026-07-27T22:08:25.625973+00:00",
+  "selected_strut_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+  ],
+  "summary_csv": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\morphology\\morphology_defect_test_summary.csv",
+  "stations_csv": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\morphology\\morphology_defect_test_stations.csv",
+  "config": {
+    "scan": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\data\\missing_struts\\tif_stacks\\210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.tif",
+    "centerlines": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\napari_visualizer\\napari_centerlines.csv",
+    "inventory": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\stage_2a_developer_output\\all_struts_inventory.csv",
+    "masks_dir": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\stage_2a_developer_output",
+    "voxel_spacing_um_zyx": [
+      58.09,
+      58.09,
+      58.09
+    ],
+    "station_step_um": 58.09,
+    "transverse_radius_um": 900.0,
+    "nominal_diameter_um": 697.08,
+    "thresholds": {
+      "ct_intensity": 40081.0,
+      "station_material_fraction": 0.15,
+      "thin_diameter_ratio": 0.8,
+      "thick_diameter_ratio": 1.2,
+      "broken_gap_um": 300.0,
+      "bent_max_deviation_um": 150.0,
+      "bent_tortuosity": 1.02,
+      "mask_signal_fraction": 0.1
+    },
+    "selection": {
+      "exclude_classifications": [
+        "Missing_Intentional",
+        "Missing_Unintentional"
+      ],
+      "test_strut_count": 16
+    }
+  },
+  "existing_outputs_read_only": [
+    "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\stage_2a_developer_output\\all_struts_inventory.csv",
+    "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\napari_visualizer\\napari_centerlines.csv",
+    "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\stage_2a_developer_output\\cad_occupancy_mask_ds4.tif",
+    "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\stage_2a_developer_output\\missing_material_mask_ds4.tif",
+    "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\stage_2a_developer_output\\excess_material_mask_ds4.tif",
+    "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\stage_2a_developer_output\\expected_missing_cad_mask_ds4.tif"
+  ],
+  "classification_policy": "Stage 2a classification is copied unchanged; excluded missingness classes are not relabeled."
+}

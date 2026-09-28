@@ -1,0 +1,20 @@
+[
+  {
+    "iteration": 1,
+    "stage2b_feedback": "Approved affine candidate-registration rerun; original Stage 2a pipeline and prior outputs preserved.",
+    "parameters": {
+      "analysis_downsample": 2,
+      "mask_downsample": 2,
+      "tube_radius_full_resolution_voxels": 6.0,
+      "tube_radius_um": 348.54,
+      "trim_fraction_each_endpoint": 0.2,
+      "longitudinal_stations": 21,
+      "empty_station_material_fraction": 0.05,
+      "minimum_mask_component_downsampled_voxels": 4,
+      "cad_surface_clearance_source_voxels": 2.0,
+      "otsu_threshold": 40081.0,
+      "missing_occupancy_cutoff": 0.08,
+      "expected_cad_supported_occupancy_cutoff": 0.025319395679980553
+    }
+  }
+]

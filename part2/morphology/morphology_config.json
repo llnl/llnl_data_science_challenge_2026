@@ -1,0 +1,25 @@
+{
+  "scan": "data/missing_struts/tif_stacks/210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.tif",
+  "registration": "part2/registration/alignment_check/candidate_affine_registered.json",
+  "inventory": "part2/registration/alignment_check/stage2a_candidate_registration_output/all_struts_inventory.csv",
+  "voxel_spacing_um_zyx": [58.09, 58.09, 58.09],
+  "nominal_diameter_um": 697.08,
+  "roi_radius_um": 900.0,
+  "node_exclusion_distance_um": 350.0,
+  "thresholds": {
+    "ct_intensity": 40081.0,
+    "occupancy_station_fraction": 0.15,
+    "thin_ratio": 0.80,
+    "thick_ratio": 1.20,
+    "broken_gap_um": 300.0,
+    "bent_max_deviation_um": 150.0,
+    "bent_tortuosity": 1.02
+  },
+  "notes": {
+    "spacing_source": "Existing Stage 2a configuration and reports; isotropic 58.09 um/source voxel.",
+    "nominal_diameter_source": "Existing Stage 2/post-analysis nominal radius of 6 source voxels: 2*6*58.09 um.",
+    "threshold_status": "Provisional screening thresholds; not ground-truth tolerances.",
+    "distance_transform": "Computed independently inside each strut ROI with anisotropic spacing.",
+    "centerline_status": "Scan-derived transverse material centroid proxy, not a validated skeleton ground truth."
+  }
+}

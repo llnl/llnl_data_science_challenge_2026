@@ -1,0 +1,97 @@
+{
+  "strut_id": 1666,
+  "junction0_id": 956,
+  "junction1_id": 962,
+  "endpoint0_xyz_source_voxels": [
+    457.6216026945054,
+    680.1328889691378,
+    104.0183334350586
+  ],
+  "endpoint1_xyz_source_voxels": [
+    457.51413198599744,
+    640.7753405588779,
+    64.63893127441406
+  ],
+  "centerline_length_source_voxels": 55.6755375488096,
+  "centerline_length_note": "Full registered endpoint-to-endpoint length; source voxel coordinates are XYZ.",
+  "requested_bounds_xyz_source_voxels_half_open": [
+    [
+      447,
+      630,
+      54
+    ],
+    [
+      469,
+      692,
+      116
+    ]
+  ],
+  "clipped_bounds_xyz_source_voxels_half_open": [
+    [
+      447,
+      630,
+      54
+    ],
+    [
+      469,
+      692,
+      116
+    ]
+  ],
+  "clipped_bounds_zyx_tiff_indices_half_open": [
+    [
+      54,
+      630,
+      447
+    ],
+    [
+      116,
+      692,
+      469
+    ]
+  ],
+  "crop_shape_zyx": [
+    62,
+    62,
+    22
+  ],
+  "scan_shape_zyx": [
+    761,
+    815,
+    837
+  ],
+  "coordinate_convention": "registration XYZ source voxels; TIFF/NumPy ZYX",
+  "unit_cell_edge_idx": 28,
+  "thickness": 0.1,
+  "csv_row": {
+    "strut_id": "1666",
+    "junction0_id": "956",
+    "junction1_id": "962",
+    "junction0_degree": "1",
+    "junction1_degree": "8",
+    "unit_cell_ids": "68",
+    "unit_cell_indices": "5,7,0",
+    "classification": "Expected_Missing_But_Material_Present",
+    "expected_by_0point5_cad": "True",
+    "ct_material_occupancy": "0.0379403792321682",
+    "mean_intensity": "34144.8984375",
+    "length_um": "3234.1917290878296",
+    "trimmed_length_um": "1940.5152587890625",
+    "longest_gap_um": "1744.6641805343631",
+    "estimated_missing_volume_mm3": "0.7124824523925781",
+    "nominal_sampled_volume_mm3": "0.7405803799629211",
+    "centroid_x_um": "26580.11763183594",
+    "centroid_y_um": "38365.77875976563",
+    "centroid_z_um": "4898.650031890869",
+    "aspect_ratio": "2.5028177261352544",
+    "sphericity": "0.8415685248777155",
+    "voxel_size_um": "58.09"
+  },
+  "threshold": 40081.0,
+  "downsample": 1,
+  "voxel_plot_axis_order": "XYZ; transposed from crop ZYX before ax.voxels",
+  "output_files": {
+    "render_3d": "/home/hannahdc/llnl_data_science_challenge_2026/part2/registratiion_alignment_check/stage2a_candidate_registration_output/classification_samples_5_each/Expected_Missing_But_Material_Present/strut_1666_3d.png",
+    "metadata": "/home/hannahdc/llnl_data_science_challenge_2026/part2/registratiion_alignment_check/stage2a_candidate_registration_output/classification_samples_5_each/Expected_Missing_But_Material_Present/strut_1666_metadata.json"
+  }
+}

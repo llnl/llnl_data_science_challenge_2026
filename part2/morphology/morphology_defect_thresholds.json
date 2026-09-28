@@ -1,0 +1,24 @@
+{
+  "scan": "data/missing_struts/tif_stacks/210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.tif",
+  "centerlines": "part2/napari_visualizer/napari_centerlines.csv",
+  "inventory": "part2/stage_2a_developer_output/all_struts_inventory.csv",
+  "masks_dir": "part2/stage_2a_developer_output",
+  "voxel_spacing_um_zyx": [58.09, 58.09, 58.09],
+  "station_step_um": 58.09,
+  "transverse_radius_um": 900.0,
+  "nominal_diameter_um": 697.08,
+  "thresholds": {
+    "ct_intensity": 40081.0,
+    "station_material_fraction": 0.15,
+    "thin_diameter_ratio": 0.80,
+    "thick_diameter_ratio": 1.20,
+    "broken_gap_um": 300.0,
+    "bent_max_deviation_um": 150.0,
+    "bent_tortuosity": 1.02,
+    "mask_signal_fraction": 0.10
+  },
+  "selection": {
+    "exclude_classifications": ["Missing_Intentional", "Missing_Unintentional"],
+    "test_strut_count": 16
+  }
+}
