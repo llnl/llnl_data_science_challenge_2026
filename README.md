@@ -39,8 +39,27 @@ Over the next few weeks, you will learn the basics of **Agentic AI** and apply t
 ### Why Agentic AI for Materials Science?
 The landscape of computational science is rapidly evolving. While traditional machine learning has excelled at isolated tasks, like predicting a material property or segmenting an image, **Agentic AI** represents the next paradigm shift. By equipping Large Language Models (LLMs) with tools, planning capabilities, and the ability to autonomously interact with datasets and software environments, we can build *autonomous AI research assistants*. These agents can execute multi-step scientific workflows, parse complex experimental data, identify anomalies, and even suggest iterative experimental designs. Understanding how to build and orchestrate these systems is quickly becoming a foundational skill for the next generation of researchers. 
 
-## Background in Materials Science
-We are working with [**X-ray CT scans of strut-based lattice structures**](https://www.sculpteo.com/en/3d-learning-hub/basics-of-3d-printing/what-are-lattice-structures/)  that were manufactured using laser powder bed fusion (LBPF). 
+## Domain Background
+
+This challenge focuses on [**X-ray computed tomography (CT) scans of strut-based lattice structures**](https://www.sculpteo.com/en/3d-learning-hub/basics-of-3d-printing/what-are-lattice-structures/) manufactured using laser powder bed fusion (LPBF). Together, these technologies make it possible to fabricate complex, lightweight metal components and inspect their internal geometry without cutting them apart.
+
+### Laser Powder Bed Fusion
+
+Laser powder bed fusion is an additive manufacturing process for metals. A recoater spreads a thin layer of metal powder across a build plate, and a focused laser selectively melts the regions defined by one cross-section of a digital part. The build platform then lowers, a new powder layer is applied, and the cycle repeats until the three-dimensional component is complete. Because material is added layer by layer, LPBF can produce internal channels and lattice geometries that would be difficult or impossible to manufacture using conventional subtractive methods.
+
+LPBF is sensitive to powder characteristics, laser power, scan speed, layer thickness, build orientation, and thermal history. Variations in these conditions can produce porosity, lack-of-fusion regions, dimensional error, residual stress, surface roughness, or adhered and partially melted powder known as dross. In a lattice, even a localized flaw can thin, bend, break, or disconnect a strut and thereby alter how loads travel through the structure.
+
+### Lattice Structures
+
+Lattice structures are networks of repeating unit cells composed of slender struts joined at nodes. They can provide high stiffness or energy absorption at low mass, while their unit-cell geometry and relative density can be tailored for a particular mechanical or thermal function. The octet-truss lattices used in this challenge contain many nominally repeated struts, which makes deviations from the expected pattern useful indicators of manufacturing defects.
+
+Their geometric complexity also makes inspection challenging. Important features include strut thickness and straightness, node shape, connectivity, and the presence of missing, broken, or partially fused members. These features are three-dimensional and may be hidden deep inside a specimen, so photographs and surface measurements alone cannot provide a complete assessment.
+
+### X-ray Computed Tomography
+
+X-ray CT is a non-destructive evaluation technique that records radiographic projections of a specimen from many angles and reconstructs them into a three-dimensional array of volume elements, or voxels. Voxel intensity reflects X-ray attenuation, which is influenced by material density, composition, and scan conditions. Dense metal generally appears brighter than surrounding air or void space, allowing the manufactured lattice to be separated from the background through segmentation.
+
+The reconstructed CT volume can be viewed as individual two-dimensional slices or analyzed as a full three-dimensional dataset. After segmentation, skeletonization reduces the lattice to centerlines that make struts, nodes, connectivity, and missing members easier to measure. CT analysis must still account for spatial resolution, noise, partial-volume effects, beam-hardening artifacts, and threshold selection, all of which can affect the apparent size or continuity of thin struts. The workflow in this challenge uses segmentation, visualization, skeletonization, and comparison with the nominal design to turn CT data into traceable evidence about lattice quality and defects.
 
 ---
 
@@ -305,8 +324,13 @@ These dataset files are tracked with Git LFS, so Git LFS must be installed befor
 git lfs pull
 ```
 
-This dataset includes CT data of 9x9x9 Octet lattices printed via laser powder bed fusion (LPBF) using Ti5553. These lattices were designed with intentionally missing struts at varying percentages (0%, 0.1%, 0.5%, and 1%) to develop inspection techniques for identifying defects.
-Unit cell size 4.56 mm at 10% relative density or 350 micron strut diameter. There is also accompanying STL files of the design used to print the lattices. It uses X-ray CT to inspect truss lattice cubes and quantifies both missing and disconnected struts, which are the primary defect classes the released CT data is intended to support. It also notes that measured missing strut percentages may exceed nominal values and that disconnected struts are commonly observed, providing important context for downstream users performing validation, training, or benchmarking of inspection methods. 
+This dataset includes CT data of 9 &times; 9 &times; 9 octet lattices printed in SS316L via laser powder bed fusion (LPBF). The lattices have the following design specifications:
+
+*   **Unit-cell length:** 4.56 mm
+*   **Designed relative density:** 10%
+*   **Designed strut diameter:** 350 &micro;m
+
+The lattices were designed with intentionally missing struts at varying percentages (0%, 0.1%, 0.5%, and 1%) to develop inspection techniques for identifying defects. The dataset also includes accompanying STL files of the designs used to print the lattices. It uses X-ray CT to inspect truss lattice cubes and quantifies both missing and disconnected struts, which are the primary defect classes the released CT data is intended to support. It also notes that measured missing-strut percentages may exceed nominal values and that disconnected struts are commonly observed, providing important context for downstream users performing validation, training, or benchmarking of inspection methods.
 
 More information about the data can be found in the following publication by Tran et al.: 
 Tran, B. et al., [“Resonant ultrasound spectroscopy measurement and modeling of additively manufactured octet truss lattice cubes,”](https://www.osti.gov/servlets/purl/2246722) *NDT&E International* 138 (2023) 102870.
@@ -317,6 +341,30 @@ Tran, B. et al., [“Resonant ultrasound spectroscopy measurement and modeling o
 *   **3D Graph Description:** Structural information describing the lattice geometry (e.g. node and edge lists).
 
 > **Note:** The STL file is not aligned/registered with the TIF or JSON file. Registration is a problem by itself. If you do not want to work on registration, `210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.json` is already aligned with the respective TIF file of the same name.
+
+### What are Materials Scientists Interested In?
+
+The following questions illustrate analyses that could be performed with this dataset:
+
+*   **Compare measured and as-designed dimensions:**
+    *   Measure the designed strut dimensions from the STL file.
+    *   Measure the actual strut dimensions from the CT data.
+    *   Measure the actual unit-cell dimensions and compare them with the design.
+*   **Analyze defective struts:**
+    *   Calculate the ideal number of struts in the designed lattice.
+    *   Identify defective struts and classify them as missing, broken, thin, or another relevant defect type.
+    *   Count defective struts by category and in total, reporting both quantities and percentages.
+    *   Determine where defects occur: near the build plate, near the top of the build, near the geometry exterior, or within the bulk of the geometry.
+    *   Determine whether defects are clustered or randomly distributed.
+    *   Analyze defect trends by strut direction, such as vertical, horizontal, or diagonal.
+    *   Identify other geometric or processing trends that may help explain defect formation.
+*   Quantify strut shape, including deviations from a circular cross-section.
+*   Analyze strut-shape variation by location, orientation, and height within the build.
+*   Create visualizations of the lattice and defective struts for presentation and data sharing.
+*   Reconstruct the CT data as a 3D model.
+*   Compare the CT-derived 3D model with the original STL design.
+*   Simulate the mechanical effects of missing, broken, and thin struts.
+*   Determine the defect percentage at which lattice strength is significantly affected.
 
 ### Project Goals
 
