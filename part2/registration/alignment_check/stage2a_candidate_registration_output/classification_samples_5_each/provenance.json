@@ -1,0 +1,13 @@
+{
+  "visualizer": "/home/hannahdc/llnl_data_science_challenge_2026/stage3_visualization/strut_visualizer.py",
+  "visualizer_modified_by_this_run": false,
+  "scan": "/home/hannahdc/llnl_data_science_challenge_2026/part2/data/missing_struts/tif_stacks/210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.tif",
+  "registration": "/home/hannahdc/llnl_data_science_challenge_2026/part2/registratiion_alignment_check/candidate_affine_registered.json",
+  "inventory": "/home/hannahdc/llnl_data_science_challenge_2026/part2/registratiion_alignment_check/stage2a_candidate_registration_output/all_struts_inventory.csv",
+  "selection": "Five quantile-spaced samples by registered source-Z centroid per category.",
+  "threshold": 40081.0,
+  "downsample": 1,
+  "margin_voxels": 10.0,
+  "voxel_alpha": 0.28,
+  "sample_count": 20
+}

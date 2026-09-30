@@ -1,0 +1,6 @@
+{
+  "dataset_root": "data/octet_truss_8x8x8",
+  "candidate_count": 0,
+  "candidates": [],
+  "note": "No labeled PacificVis .npy volumes were present."
+}

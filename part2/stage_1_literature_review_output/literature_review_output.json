@@ -1,0 +1,56 @@
+{
+  "parsed_dataset_understanding": {
+    "exploration_insights": "The inspected registration JSON has 10,206 junctions with id/position/lattice indices, 18,468 struts with two junction IDs, unit-cell edge index, and thickness=0.1, plus 729 unit cells (9x9x9) each referencing 24 struts. Strut lengths are uniformly about 55.846 registered-coordinate units and junction degrees span 1-8. This establishes an edge-wise graph pipeline: score a trimmed tube for each strut, use endpoint degree to distinguish boundary cases, and aggregate results by unit-cell indices instead of relying on globally merged voxel components.",
+    "ground_truth_format": "Nominal STL (0.5.stl), registration JSON graph, and OBJ/NPY simulated templates for bent, broken, inflated, and missing struts.",
+    "scan_format": "Large three-dimensional XCT TIFF stack for the 0.5%-missing-strut specimen.",
+    "registration_status": "Datasets are mathematically registered, but on-disk coordinate frames may differ. Parse the supplied transform/origin/spacing metadata, apply the verified forward transform once, and preserve the TIFF axis permutation; do not perform iterative registration optimization."
+  },
+  "coordinate_transformation_strategy": {
+    "recommended_approach": "Represent mesh and graph points homogeneously, apply the parsed 4x4 mesh-to-scan transform, subtract scan origin, divide by physical voxel pitch, and explicitly permute Cartesian XYZ indices to TIFF ZYX order. If the supplied matrix is reverse-direction, invert once after condition-number validation. Confirm only that transformed mesh bounds and graph edges fall in the scan ROI and sample material; retain matrix, inverse, origin, spacing, and axis order as provenance.",
+    "target_libraries": ["numpy", "trimesh", "tifffile", "scipy.spatial"]
+  },
+  "data_structure_bridging_strategy": {
+    "recommended_approach": "Segment CT material and rasterize the transformed nominal STL/graph-edge tubes into the same scan-index grid; form directional CAD-minus-CT and CT-minus-CAD masks; use a physical-unit SDF tolerance band; then assign retained components and occupancy measurements to graph edges and unit cells.",
+    "memory_efficient_implementation": "Use tifffile.memmap where compatible, otherwise Dask/Zarr; crop to transformed lattice ROI; process overlapping Z slabs; use bool/uint8 masks; batch vectorized edge samples; use ROI/tiled SDFs; local-voxelize mesh around each slab/edge group; and merge only overlap-touching component labels with union-find.",
+    "rationale": "The graph provides known edge endpoints, nominal thickness, and unit-cell grouping, making strut-level occupancy and gap length more robust than a global connected-component count. SDF-based disagreement is tolerant to surface discretization and retains signed loss versus excess evidence.",
+    "target_libraries": ["numpy", "scipy.ndimage", "tifffile", "trimesh", "pandas", "dask or zarr"]
+  },
+  "defect_quantification_pipeline": [
+    {
+      "defect_type": "bent strut",
+      "algorithmic_approach": "Within each transformed nominal edge neighbourhood, extract the as-built centerline/surface and compute robust signed normal displacement and curvature change relative to the graph edge, while checking that material occupancy remains high.",
+      "physical_scaling_method": "Convert each index offset with (sz,sy,sx) before norms; report median/95th-percentile displacement and curvature-derived quantities in µm and µm^-1.",
+      "target_libraries": ["numpy", "scipy.ndimage", "trimesh", "scikit-image optional"],
+      "coding_agent_instructions": "Calibrate displacement tolerance on nominal and bent NPY templates; trim endpoint node bands; use a robust percentile rather than a maximum and reject calls dominated by material loss/excess.",
+      "references": ["https://www.sciencedirect.com/science/article/abs/pii/S014163592200040X", "https://docs.scipy.org/doc/scipy-0.17.0/reference/generated/scipy.ndimage.distance_transform_edt.html"]
+    },
+    {
+      "defect_type": "broken strut",
+      "algorithmic_approach": "Detect an interior CAD-material/CT-void component in a trimmed graph-edge tube and require occupied CT material on both sides along the centerline.",
+      "physical_scaling_method": "Gap volume=voxel_count*sz*sy*sx µm^3; gap length is the spacing-scaled centerline run in µm.",
+      "target_libraries": ["numpy", "scipy.ndimage", "tifffile"],
+      "coding_agent_instructions": "Use 26-connected components after CAD/SDF filtering. Validate component size and gap length against broken and nominal template controls, retaining endpoint-occupancy evidence.",
+      "references": ["https://nvlpubs.nist.gov/nistpubs/jres/119/jres.119.019.pdf"]
+    },
+    {
+      "defect_type": "missing strut",
+      "algorithmic_approach": "For every graph strut, sample a transformed cylindrical/tubular ROI after trimming both junction ends and calculate CT-material occupancy, CAD-loss volume, and longest contiguous empty centerline run.",
+      "physical_scaling_method": "Missing volume=voxel_count*sz*sy*sx µm^3. For edge direction u and n index steps, length=n*sqrt((uz*sz)^2+(uy*sy)^2+(ux*sx)^2) µm.",
+      "target_libraries": ["numpy", "scipy.ndimage", "tifffile"],
+      "coding_agent_instructions": "Tune occupancy threshold, tube radius, endpoint trim, and minimum gap on only missing-strut and nominal NPY controls. Report strut ID, endpoint IDs/degrees, unit-cell IDs, occupancy, gap length, volume, and sensitivity confidence.",
+      "references": ["https://pmc.ncbi.nlm.nih.gov/articles/PMC6159003/", "https://docs.scipy.org/doc/scipy-0.17.0/reference/generated/scipy.ndimage.distance_transform_edt.html"]
+    },
+    {
+      "defect_type": "inflated strut",
+      "algorithmic_approach": "Identify CT material outside transformed nominal CAD, retain components attached to or close to a graph-edge tube, and quantify outward SDF distance and effective-radius increase.",
+      "physical_scaling_method": "Excess volume=voxel_count*sz*sy*sx µm^3. Use EDT sampling=(sz,sy,sx) to report outward SDF distance in µm.",
+      "target_libraries": ["numpy", "scipy.ndimage", "trimesh", "tifffile"],
+      "coding_agent_instructions": "Calibrate excess threshold/SDF tolerance on inflated and nominal templates. Remove the tolerance band and detached powder/speckle before reporting attached excess material.",
+      "references": ["https://trimesh.org/trimesh.voxel.creation.html", "https://pmc.ncbi.nlm.nih.gov/articles/PMC6159003/"]
+    }
+  ],
+  "workflow_meta": {
+    "confidence_level": "High",
+    "potential_false_positives": ["incorrect transform direction, origin, or XYZ-to-ZYX permutation", "surface partial-volume voxels", "junction overlap without endpoint trimming", "beam-hardening/ring artifacts or threshold drift", "loose powder/disconnected speckle", "mesh non-watertightness during filled voxelization", "features below effective XCT resolution"]
+  }
+}

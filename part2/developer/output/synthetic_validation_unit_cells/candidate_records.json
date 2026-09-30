@@ -1,0 +1,128 @@
+[
+  {
+    "dataset": "C:\\Users\\Enduser\\Downloads\\bb5504389k_1_1\\PacificVis Datasets\\octet unit cell with defects\\octet_truss_unit_cell_no_defects_0256_xray_recon.npy",
+    "known_label": "no_defects",
+    "predicted_label": "no_defects",
+    "match": true,
+    "screenshot": "part2\\developer\\output\\synthetic_validation_unit_cells\\octet_truss_unit_cell_no_defects_0256_xray_recon\\isometric.png",
+    "features": {
+      "shape_zyx": [
+        256,
+        256,
+        256
+      ],
+      "threshold": 0.0058048018254339695,
+      "downsample_factor": 2,
+      "sample_values": 140608,
+      "compact_material_voxels": 89470,
+      "negative_difference_voxels": 0,
+      "positive_difference_voxels": 0,
+      "difference_fraction": 0.0
+    }
+  },
+  {
+    "dataset": "C:\\Users\\Enduser\\Downloads\\bb5504389k_1_1\\PacificVis Datasets\\octet unit cell with defects\\octet_truss_unit_cell_bent_strut_0256_xray_recon.npy",
+    "known_label": "bent_strut",
+    "predicted_label": "bent_strut",
+    "match": true,
+    "screenshot": "part2\\developer\\output\\synthetic_validation_unit_cells\\octet_truss_unit_cell_bent_strut_0256_xray_recon\\isometric.png",
+    "features": {
+      "shape_zyx": [
+        256,
+        256,
+        256
+      ],
+      "threshold": 0.005816053599119186,
+      "downsample_factor": 2,
+      "sample_values": 140608,
+      "compact_material_voxels": 83764,
+      "negative_difference_voxels": 20623,
+      "positive_difference_voxels": 14917,
+      "difference_fraction": 0.397228
+    }
+  },
+  {
+    "dataset": "C:\\Users\\Enduser\\Downloads\\bb5504389k_1_1\\PacificVis Datasets\\octet unit cell with defects\\octet_truss_unit_cell_broken_strut_0256_xray_recon.npy",
+    "known_label": "broken_strut",
+    "predicted_label": "broken_strut",
+    "match": true,
+    "screenshot": "part2\\developer\\output\\synthetic_validation_unit_cells\\octet_truss_unit_cell_broken_strut_0256_xray_recon\\isometric.png",
+    "features": {
+      "shape_zyx": [
+        256,
+        256,
+        256
+      ],
+      "threshold": 0.005630455445498228,
+      "downsample_factor": 2,
+      "sample_values": 140608,
+      "compact_material_voxels": 86321,
+      "negative_difference_voxels": 13836,
+      "positive_difference_voxels": 10687,
+      "difference_fraction": 0.274092
+    }
+  },
+  {
+    "dataset": "C:\\Users\\Enduser\\Downloads\\bb5504389k_1_1\\PacificVis Datasets\\octet unit cell with defects\\octet_truss_unit_cell_inflated_strut_0256_xray_recon.npy",
+    "known_label": "inflated_strut",
+    "predicted_label": "inflated_strut",
+    "match": true,
+    "screenshot": "part2\\developer\\output\\synthetic_validation_unit_cells\\octet_truss_unit_cell_inflated_strut_0256_xray_recon\\isometric.png",
+    "features": {
+      "shape_zyx": [
+        256,
+        256,
+        256
+      ],
+      "threshold": 0.005675924010574818,
+      "downsample_factor": 2,
+      "sample_values": 140608,
+      "compact_material_voxels": 77384,
+      "negative_difference_voxels": 50188,
+      "positive_difference_voxels": 38102,
+      "difference_fraction": 0.986811
+    }
+  },
+  {
+    "dataset": "C:\\Users\\Enduser\\Downloads\\bb5504389k_1_1\\PacificVis Datasets\\octet unit cell with defects\\octet_truss_unit_cell_missing_strut_0256_xray_recon.npy",
+    "known_label": "missing_strut",
+    "predicted_label": "missing_strut",
+    "match": true,
+    "screenshot": "part2\\developer\\output\\synthetic_validation_unit_cells\\octet_truss_unit_cell_missing_strut_0256_xray_recon\\isometric.png",
+    "features": {
+      "shape_zyx": [
+        256,
+        256,
+        256
+      ],
+      "threshold": 0.005767837632447481,
+      "downsample_factor": 2,
+      "sample_values": 140608,
+      "compact_material_voxels": 87950,
+      "negative_difference_voxels": 1533,
+      "positive_difference_voxels": 13,
+      "difference_fraction": 0.01728
+    }
+  },
+  {
+    "dataset": "C:\\Users\\Enduser\\Downloads\\bb5504389k_1_1\\PacificVis Datasets\\octet unit cell with defects\\octet_truss_unit_cell_thin_strut_0256_xray_recon.npy",
+    "known_label": "thin_strut",
+    "predicted_label": "thin_strut",
+    "match": true,
+    "screenshot": "part2\\developer\\output\\synthetic_validation_unit_cells\\octet_truss_unit_cell_thin_strut_0256_xray_recon\\isometric.png",
+    "features": {
+      "shape_zyx": [
+        256,
+        256,
+        256
+      ],
+      "threshold": 0.005777749232947826,
+      "downsample_factor": 2,
+      "sample_values": 140608,
+      "compact_material_voxels": 88551,
+      "negative_difference_voxels": 1011,
+      "positive_difference_voxels": 92,
+      "difference_fraction": 0.012328
+    }
+  }
+]

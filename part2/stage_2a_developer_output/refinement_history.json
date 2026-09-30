@@ -1,0 +1,36 @@
+[
+  {
+    "iteration": 0,
+    "stage2b_feedback": "Initial Stage 2a execution; no Stage 2b feedback yet.",
+    "parameters": {
+      "analysis_downsample": 2,
+      "mask_downsample": 4,
+      "tube_radius_full_resolution_voxels": 4.0,
+      "tube_radius_um": 232.36,
+      "trim_fraction_each_endpoint": 0.2,
+      "longitudinal_stations": 21,
+      "empty_station_material_fraction": 0.12,
+      "minimum_mask_component_downsampled_voxels": 6,
+      "otsu_threshold": 40127.0,
+      "missing_occupancy_cutoff": 0.08
+    }
+  },
+  {
+    "iteration": 1,
+    "stage2b_feedback": "Stage 2b iter 1: direct dual-CAD mapping recovered only 17/92; global surface shell covered 67.5% of CAD; apply 2-source-voxel clearance, enforce 0.005293 mm3 floor, add excess mask, and remove nonphysical morphology calls.",
+    "parameters": {
+      "analysis_downsample": 2,
+      "mask_downsample": 2,
+      "tube_radius_full_resolution_voxels": 6.0,
+      "tube_radius_um": 348.54,
+      "trim_fraction_each_endpoint": 0.2,
+      "longitudinal_stations": 21,
+      "empty_station_material_fraction": 0.05,
+      "minimum_mask_component_downsampled_voxels": 4,
+      "cad_surface_clearance_source_voxels": 2.0,
+      "otsu_threshold": 40081.0,
+      "missing_occupancy_cutoff": 0.08,
+      "expected_cad_supported_occupancy_cutoff": 0.04297328814864163
+    }
+  }
+]

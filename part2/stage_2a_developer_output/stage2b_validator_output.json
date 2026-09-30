@@ -1,0 +1,15 @@
+{
+  "validation_status": "PASSED",
+  "iteration_feedback": {
+    "rendered_justification_frame_path": null,
+    "remediation_instructions": null,
+    "registration_alignment_score": "acceptable"
+  },
+  "statistical_metrics": {
+    "defect_morphology_notes": "58.09 um scale verified. Known-omission recall 87/92; 630 non-design missing/broken calls. Missing mask covers 29.2% of CAD and 34.5% lies on its one-voxel outer layer (below the 75% drift gate). 0/722 sphericity values are nonphysical. An excess mask exists (301338 voxels), but has no per-strut association; bent and inflated classifications are absent.",
+    "filtered_noise_count": 0
+  },
+  "artifacts": {
+    "human_validation_report_path": "stage2b_human_validation_report.md"
+  }
+}

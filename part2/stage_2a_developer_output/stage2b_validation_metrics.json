@@ -1,0 +1,44 @@
+{
+  "inventory_rows": 18468,
+  "defect_rows": 722,
+  "class_counts": {
+    "Nominal": 17746,
+    "Missing_Intentional": 87,
+    "Expected_Missing_But_Material_Present": 5,
+    "Missing_Unintentional": 630
+  },
+  "expected_cad_struts": 92,
+  "expected_class_counts": {
+    "Missing_Intentional": 87,
+    "Expected_Missing_But_Material_Present": 5
+  },
+  "intentional_missing_recall": 0.9456521739130435,
+  "median_expected_occupancy": 0.0036778938956558704,
+  "median_nonexpected_occupancy": 0.23499806225299835,
+  "voxel_size_min_max_um": [
+    58.09,
+    58.09
+  ],
+  "median_length_um": 3244.071354637146,
+  "noise_floor_mm3": 0.005292585633483001,
+  "sub_noise_defects": 0,
+  "invalid_sphericity_count": 0,
+  "aspect_ratio_below_one_count": 1,
+  "cad_missing_fraction": 0.29163346053113304,
+  "expected_mask_missing_fraction": 0.7922161882596328,
+  "nonexpected_cad_missing_fraction": 0.29018085514876507,
+  "shell_missing_fraction": 0.3452840819292243,
+  "missing_component_count_effective_ds4": 773,
+  "largest_component_fraction": 0.9945844667055643,
+  "zero_shift_coverage_ds8": 0.25107349376896504,
+  "best_shift_zyx_ds8": [
+    0,
+    0,
+    0
+  ],
+  "best_shift_coverage_ds8": 0.25107349376896504,
+  "mask_downsample": 2,
+  "excess_mask_voxels": 301338,
+  "missing_excess_overlap_voxels": 0,
+  "validation_iteration": 2
+}

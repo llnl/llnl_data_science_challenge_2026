@@ -1,0 +1,97 @@
+{
+  "strut_id": 946,
+  "junction0_id": 543,
+  "junction1_id": 540,
+  "endpoint0_xyz_source_voxels": [
+    298.04511907026875,
+    406.4808562390325,
+    65.16351023857266
+  ],
+  "endpoint1_xyz_source_voxels": [
+    258.5246673548872,
+    406.79106133749536,
+    104.61943273016871
+  ],
+  "centerline_length_source_voxels": 55.84560994969751,
+  "centerline_length_note": "Full registered endpoint-to-endpoint length; source voxel coordinates are XYZ.",
+  "requested_bounds_xyz_source_voxels_half_open": [
+    [
+      248,
+      396,
+      55
+    ],
+    [
+      310,
+      418,
+      116
+    ]
+  ],
+  "clipped_bounds_xyz_source_voxels_half_open": [
+    [
+      248,
+      396,
+      55
+    ],
+    [
+      310,
+      418,
+      116
+    ]
+  ],
+  "clipped_bounds_zyx_tiff_indices_half_open": [
+    [
+      55,
+      396,
+      248
+    ],
+    [
+      116,
+      418,
+      310
+    ]
+  ],
+  "crop_shape_zyx": [
+    61,
+    22,
+    62
+  ],
+  "scan_shape_zyx": [
+    761,
+    815,
+    837
+  ],
+  "coordinate_convention": "registration XYZ source voxels; TIFF/NumPy ZYX",
+  "unit_cell_edge_idx": 26,
+  "thickness": 0.1,
+  "csv_row": {
+    "strut_id": "946",
+    "junction0_id": "543",
+    "junction1_id": "540",
+    "junction0_degree": "4",
+    "junction1_degree": "4",
+    "unit_cell_ids": "38",
+    "unit_cell_indices": "2,4,0",
+    "classification": "Missing_Intentional",
+    "expected_by_0point5_cad": "True",
+    "ct_material_occupancy": "0.0077429343946278095",
+    "mean_intensity": "33577.234375",
+    "length_um": "3244.071133041382",
+    "trimmed_length_um": "1946.442626953125",
+    "longest_gap_um": "1946.4428127822875",
+    "estimated_missing_volume_mm3": "0.7370907068252563",
+    "nominal_sampled_volume_mm3": "0.7428424954414368",
+    "centroid_x_um": "16165.568771667482",
+    "centroid_y_um": "23621.48267303467",
+    "centroid_z_um": "4931.345600509644",
+    "aspect_ratio": "2.7922803878784177",
+    "sphericity": "0.7851503265018197",
+    "voxel_size_um": "58.09"
+  },
+  "threshold": 40000.0,
+  "downsample": 1,
+  "voxel_plot_axis_order": "XYZ; transposed from crop ZYX before ax.voxels",
+  "output_files": {
+    "render_3d": "stage3_visualization/output/classification_samples_5_each/strut_946_3d.png",
+    "metadata": "stage3_visualization/output/classification_samples_5_each/strut_946_metadata.json"
+  }
+}

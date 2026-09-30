@@ -1,0 +1,39 @@
+{
+  "mode": "synthetic_validation",
+  "dataset_root": "data",
+  "dataset_count": 1,
+  "records": [
+    {
+      "dataset": "data\\unitcell\\unitcell.npy",
+      "known_defect_type": "no_defects",
+      "predicted_defect_type": "no_defects",
+      "prediction_matches_known_label": true,
+      "features": {
+        "shape_zyx": [
+          256,
+          256,
+          256
+        ],
+        "dtype": "float32",
+        "threshold": 0.0058048018254339695,
+        "threshold_method": "Otsu on bounded strided NPY sample",
+        "downsample_factor": 2,
+        "sample_values": 140608,
+        "material_voxels_in_compact_mask": 89470,
+        "material_fraction": 0.04266262,
+        "bbox_zyx_min": [
+          18,
+          19,
+          19
+        ],
+        "bbox_zyx_max": [
+          109,
+          109,
+          109
+        ]
+      },
+      "visualization": "part2\\developer\\output\\synthetic_validation\\unitcell\\isometric.png"
+    }
+  ],
+  "memory_strategy": "NPY memory mapping, bounded strided sampling, compact masks"
+}

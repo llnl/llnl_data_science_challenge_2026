@@ -1,0 +1,219 @@
+{
+  "inspection_task": "volumetric_defect_detection",
+  "input_interpretation": {
+  "cad_format": ".stl",
+  "scan_format": ".tif_stack",
+  "target_defects": [
+  "discontinuities",
+  "missing_features",
+  "internal_voids"
+  ],
+  "assumption": "The TIFF stack is a reconstructed volumetric scan, likely XCT or micro-CT. If it is only an optical surface scan, internal void detection is not physically supported."
+  },
+  "recommended_workflow": {
+  "primary_strategy": "Register the STL-derived solid occupancy volume to the scan, segment the scan into material/background, and compute voxel-wise disagreement maps.",
+  "steps": [
+  "Read TIFF slices with voxel spacing, orientation, and intensity calibration preserved.",
+  "Crop to the specimen bounding box and resample the STL and scan to a common voxel grid.",
+  "Repair or validate the STL as a watertight manifold before voxelization.",
+  "Perform rigid registration using coarse principal-axis alignment followed by overlap-based or surface-based refinement.",
+  "Create a binary CAD occupancy mask and optionally a signed-distance field.",
+  "Segment scan material using robust thresholding, local background correction, or a learned model.",
+  "Compute disagreement classes: expected material but scanned void, expected void but scanned material, and scan anomalies inside expected material.",
+  "Remove isolated noise using connected-component size filtering and 3D morphology.",
+  "Extract defect volume, centroid, bounding box, connectedness, aspect ratio, roundness, maximum dimension, and orientation.",
+  "Validate detection limits using known resolution, voxel size, contrast-to-noise ratio, and synthetic defects inserted into the registered CAD volume."
+  ]
+  },
+  "methods": [
+  {
+  "name": "CAD-to-scan occupancy difference",
+  "description": "Voxelize the STL into a binary solid mask and compare it with a segmented scan mask. The difference map directly localizes missing material, excess material, blocked channels, and geometric discontinuities.",
+  "applicability": {
+  "discontinuities": "High for volumetric gaps or connected lack-of-fusion regions; limited for cracks thinner than the scan resolution.",
+  "missing_features": "High when the missing feature is represented in the STL and the scan segmentation is reliable.",
+  "internal_voids": "Moderate to high for voids inside expected material; requires sufficient X-ray contrast and registration accuracy."
+  },
+  "limitations": [
+  "Registration errors can look like defects, especially near surfaces and thin walls.",
+  "Binary thresholding loses grayscale information and can merge small voids with noise.",
+  "STL tessellation and non-watertight geometry can introduce voxelization artifacts."
+  ],
+  "references": [
+  "du Plessis et al., Quality Control of a Laser Additive Manufactured Medical Implant by X-Ray Tomography, 2016, https://doi.org/10.1089/3dp.2016.0012", "Yao et al., Fully automated registration of 3D CT data to CAD model for surface deviation measurement, 2019, https://doi.org/10.3233/XST-190561"
+  ]
+  },
+  {
+  "name": "Signed-distance-field comparison",
+  "description": "Represent both nominal CAD and scanned geometry with signed distance fields. Threshold the absolute distance difference rather than relying only on binary occupancy.",
+  "applicability": {
+  "discontinuities": "High for geometric deviations and surface-adjacent discontinuities.",
+  "missing_features": "High for missing or displaced channels, ribs, holes, and other designed features.",
+  "internal_voids": "Moderate; direct occupancy comparison is generally better for fully internal pores."
+  },
+  "advantages": [
+  "More tolerant of small registration and surface discretization errors than raw binary XOR.",
+  "Provides signed directionality: inward loss versus outward excess.",
+  "Naturally supports distance-based defect severity metrics."
+  ],
+  "references": [
+  "Chand et al., Deep Learning based 3D Volume Correlation for Additive Manufacturing Using High-Resolution Industrial XCT, 2025, https://arxiv.org/abs/2507.07757",
+  "Comparative Evaluation of Voxel and Mesh Representations for Digital Defect Detection in Construction-Scale Additive Manufacturing, 2026, https://www.mdpi.com/2075-5309/16/4/805"
+  ]
+  },
+  {
+  "name": "Direct volumetric scan anomaly detection",
+  "description": "Segment material and identify anomalous low-intensity or high-contrast voxel clusters directly within the scan, without requiring CAD.",
+  "applicability": {
+  "discontinuities": "High for pores, lack-of-fusion regions, inclusions, and other intensity-visible anomalies.",
+  "missing_features": "Low to moderate unless the nominal feature geometry is also available.",
+  "internal_voids": "High when voids have sufficient contrast and are larger than the effective detection limit."
+  },
+  "implementation_pattern": [
+  "Estimate material/background thresholds globally or per slice.",
+  "Apply local background correction for beam hardening and intensity drift.",
+  "Use multiscale 3D filters or morphological top-hat operations.",
+  "Threshold saliency responses and label connected components.",
+  "Filter components by physical volume, aspect ratio, and location within the CAD material mask."
+  ],
+  "references": [
+  "Petrich and Reutzel, Automated Defect Recognition for Additive Manufactured Parts Using Machine Perception and Visual Saliency, 2023, https://pure.psu.edu/en/publications/automated-defect-recognition-for-additive-manufactured-parts-usin/",
+  "Standard method for microCT-based additive manufacturing quality control: Porosity analysis, 2018, https://pmc.ncbi.nlm.nih.gov/articles/PMC6159003/"
+  ]
+  },
+  {
+  "name": "3D connected-component and morphology analysis",
+  "description": "After segmentation, label 26-connected defect regions and classify them using geometric descriptors.",
+  "applicability": {
+  "discontinuities": "High for connected gaps and irregular lack-of-fusion regions.",
+  "missing_features": "High after CAD/scan differencing.",
+  "internal_voids": "High for isolated pores and connected porosity networks."
+  },
+  "useful_features": [
+  "physical volume",
+  "equivalent diameter",
+  "maximum Feret dimension",
+  "aspect ratio",
+  "roundness",
+  "surface-to-volume ratio",
+  "sphericity",
+  "sparseness",
+  "principal-axis orientation",
+  "distance to external surface",
+  "overlap with expected CAD material or feature regions"
+  ],
+  "references": [
+  "Poudel et al., Feature-based volumetric defect classification in metal additive manufacturing, Nature Communications, 2022, https://doi.org/10.1038/s41467-022-34122-x"
+  ],
+  "evidence": "Using multiple morphological descriptors, rather than one or two thresholds, was reported to classify lack-of-fusion, gas-entrapped pores, and keyholes with over 98 percent decision-tree accuracy and over 99 percent neural-network accuracy."
+  },
+  {
+  "name": "3D U-Net or other volumetric neural segmentation",
+  "description": "Train a 3D CNN to segment defect voxels directly from scan volumes.",
+  "applicability": {
+  "discontinuities": "High if representative labeled examples exist.",
+  "missing_features": "Moderate; requires CAD-aware labels or synthetic missing-feature examples.",
+  "internal_voids": "High for complex appearance variation, provided training data cover the scan domain."
+  },
+  "tradeoffs": [
+  "Strong performance but high memory use.",
+  "Requires labeled volumetric data and careful handling of severe class imbalance.",
+  "Patch-based inference is required for large TIFF stacks.",
+  "Synthetic defect generation can reduce labeling cost but may create domain shift."
+  ],
+  "references": [
+  "Wong et al., Automatic Volumetric Segmentation of Additive Manufacturing Defects with 3D U-Net, AAAI, 2021, https://eil.stanford.edu/sites/g/files/sbiybj34491/files/media/file/am_3dunet_aaai.pdf",
+  "Bimrose et al., Detecting and classifying hidden defects in additively manufactured parts using deep learning and X-ray computed tomography, Journal of Intelligent Manufacturing, 2025, https://doi.org/10.1007/s10845-024-02416-0",
+  "Automatic detection of hidden defects and qualification of additively manufactured parts using X-ray computed tomography and computer vision, 2024, https://doi.org/10.1016/j.mfglet.2024.09.147"
+  ]
+  }
+  ],
+  "defect_mapping": {
+  "discontinuities": {
+  "best_signal": "Localized scan-background regions inside expected CAD material, especially elongated or irregular connected components.",
+  "recommended_methods": [
+  "CAD occupancy difference",
+  "direct volumetric anomaly detection",
+  "connected-component morphology"
+  ],
+  "likely_examples": [
+  "lack of fusion",
+  "cracks",
+  "interlayer gaps",
+  "inclusions"
+  ]
+  },
+  "missing_features": {
+  "best_signal": "Expected CAD void or channel occupied by scan material, or expected CAD solid absent from the scan.",
+  "recommended_methods": [
+  "registered CAD/scan occupancy comparison",
+  "signed-distance-field comparison"
+  ],
+  "important_check": "Differentiate true missing features from scan segmentation failure, partial-volume effects, and registration drift."
+  },
+  "internal_voids": {
+  "best_signal": "Low-intensity connected regions enclosed by expected material.",
+  "recommended_methods": [
+  "direct scan segmentation",
+  "CAD-constrained anomaly detection",
+  "3D morphology"
+  ],
+  "important_check": "Use scan-resolution and detectability estimates; small or irregular defects can be missed or have their volume underestimated."
+  }
+  },
+  "memory_efficient_vectorized_implementation": {
+  "recommended_stack": [
+  "NumPy for array operations",
+  "SciPy ndimage for filtering, distance transforms, morphology, and connected components",
+  "Dask or Zarr for out-of-core TIFF-stack processing",
+  "CuPy or PyTorch only when GPU memory is available"
+  ],
+  "principles": [
+  "Process only the registered specimen ROI rather than the full scanner volume.",
+  "Store binary masks as uint8 or bool; store intensities and distance fields as float32.",
+  "Use slab-wise processing along the z-axis with overlap margins at least as large as the largest filter radius.",
+  "Use separable 3D filters as sequential 1D convolutions instead of dense 3D kernels.",
+  "Use vectorized boolean operations for occupancy differences and avoid Python loops over voxels.",
+  "Use sparse or run-length representations for highly sparse defect masks.",
+  "For connected components across slabs, merge labels touching adjacent slab boundaries using a union-find structure.",
+  "Compute morphology descriptors only for candidate components, not for every voxel.",
+  "Use distance transforms and nearest-neighbor searches on cropped boundary bands rather than allocating full pairwise distance matrices.",
+  "Use patch-based neural inference with overlap and tiled aggregation if deep learning is required."
+  ],
+  "suggested_array_operations": [
+  "missing_material = cad_material & ~scan_material",
+  "unexpected_material = ~cad_material & scan_material",
+  "internal_void_candidate = cad_material & ~scan_material",
+  "surface_band = distance_transform_edt(cad_material) <= tolerance_voxels",
+  "defect_mask = connected_component_filter(candidate_mask, min_volume_voxels)"
+  ],
+  "complexity_guidance": {
+  "occupancy_comparison": "O(N) time and approximately one to three bytes per voxel for masks.",
+  "separable_filtering": "O(N*(kx+ky+kz)) rather than O(Nkxky*kz).",
+  "distance_field": "O(N) for standard Euclidean distance transforms, but process in chunks when N is large.",
+  "neural_segmentation": "Memory is dominated by feature maps; use small overlapping 3D patches and mixed precision."
+  }
+  },
+  "resolution_and_validation": {
+  "minimum_detection_warning": "A defect represented by fewer than approximately 2 to 3 voxels across its smallest dimension is unreliable and may disappear after reconstruction, interpolation, or thresholding.",
+  "evidence": "A recent registered XCT dataset reported an approximate flaw detection limit of 50 to 75 micrometers, corresponding to about 2 to 3 voxels, while a controlled XCT study showed that irregular lack-of-fusion features are lost more readily than near-spherical pores as voxel size increases.",
+  "references": [
+  "A co-registered in-situ and ex-situ dataset from wire arc additive manufacturing process, 2025, https://doi.org/10.1038/s41597-025-04638-0",
+  "Non-destructive detection of critical defects in additive manufacturing, 2025, https://pmc.ncbi.nlm.nih.gov/articles/PMC11861637/"
+  ],
+  "validation_protocol": [
+  "Measure voxel spacing and estimate effective spatial resolution.",
+  "Insert synthetic spherical, elongated, crack-like, and missing-feature defects into the CAD volume.",
+  "Forward-model or intensity-blend synthetic defects into defect-free scans when possible.",
+  "Evaluate detection probability versus defect size, shape, orientation, and depth.",
+  "Report precision, recall, localization error, volumetric bias, and false positives near boundaries.",
+  "Perform sensitivity analysis over segmentation threshold, registration tolerance, and minimum component size."
+  ]
+  },
+  "overall_recommendation": {
+  "preferred_baseline": "Use a two-stage hybrid pipeline: robust scan segmentation plus registered STL occupancy comparison, followed by 3D connected-component morphology.",
+  "why": "It directly addresses missing features and internal voids, uses the available STL prior, is substantially more memory efficient than a full 3D CNN, and provides interpretable defect locations and measurements.",
+  "when_to_add_deep_learning": "Add patch-based 3D U-Net or synthetic-data ViT classification only if thresholding and morphology cannot separate defects from artifacts or if a sufficiently representative labeled dataset is available.",
+  "confidence": "High for volumetric voids and CAD-defined missing features when scan resolution and registration are adequate; moderate for thin cracks and irregular discontinuities near the detectability limit."
+  }
+}

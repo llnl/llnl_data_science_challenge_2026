@@ -1,0 +1,74 @@
+{
+  "strut_id": 1728,
+  "classification": "Expected_Missing_But_Material_Present",
+  "junction_ids": [
+    992,
+    991
+  ],
+  "endpoint_xyz_registered_voxels": [
+    [
+      654.444091796875,
+      602.1144409179688,
+      64.91178894042969
+    ],
+    [
+      694.13330078125,
+      641.4017944335938,
+      64.83526611328125
+    ]
+  ],
+  "scan": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\data\\missing_struts\\tif_stacks\\210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.tif",
+  "scan_shape_zyx": [
+    761,
+    815,
+    837
+  ],
+  "crop_start_xyz": [
+    590,
+    538,
+    0
+  ],
+  "crop_end_xyz": [
+    760,
+    707,
+    130
+  ],
+  "crop_shape_zyx": [
+    130,
+    169,
+    170
+  ],
+  "threshold": 40081.0,
+  "material_voxels": 1265757,
+  "focused_material_voxels": null,
+  "mode": "context",
+  "focus_radius_voxels": 8.0,
+  "crop_radius_voxels": 64,
+  "zoom_out": 1.0,
+  "context_tube_count": 194,
+  "gap_bins": null,
+  "context_opacity": 0.34,
+  "focused_opacity": 0.95,
+  "clipping_plane_origin_xyz": [
+    674.2886962890625,
+    621.7581176757812,
+    64.87352752685547
+  ],
+  "clipping_plane_normal_xyz": [
+    0.7034997114934132,
+    -0.7106955437658832,
+    0.0
+  ],
+  "tube_radius_voxels": 6.0,
+  "views": {
+    "isometric": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\visual_reasoner\\inspection_outputs\\strut-01728\\context_isometric.png",
+    "front": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\visual_reasoner\\inspection_outputs\\strut-01728\\context_front.png",
+    "side": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\visual_reasoner\\inspection_outputs\\strut-01728\\context_side.png"
+  },
+  "interactive_vtp": {
+    "ct_material": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\visual_reasoner\\inspection_outputs\\strut-01728\\ct_material.vtp",
+    "selected_strut": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\visual_reasoner\\inspection_outputs\\strut-01728\\selected_strut.vtp",
+    "neighboring_struts": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\visual_reasoner\\inspection_outputs\\strut-01728\\neighboring_struts.vtp"
+  },
+  "interactive_glb": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\visual_reasoner\\inspection_outputs\\strut-01728\\inspection_model.glb"
+}

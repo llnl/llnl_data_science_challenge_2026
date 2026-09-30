@@ -1,0 +1,3 @@
+ {"reasoning":"The segmentation preserves the lattice’s strut connectivity, nodes, and overall topology very closely.
+  Differences appear limited to minor pixel-level thickness or edge variations, with no meaningful missing regions, false
+  positives, or disconnected artifacts.","score":5}

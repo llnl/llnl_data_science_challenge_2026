@@ -1,0 +1,181 @@
+{
+  "scope": "Stage 1 methodology for generalized volumetric defect detection using a CAD STL reference and a TIFF-stack scan. The recommendations are dataset-agnostic; no project dataset files were accessed.",
+  "input_payload": {
+    "inspection_task": "volumetric_defect_detection",
+    "data_modalities": {
+      "cad_format": ".stl",
+      "scan_format": ".tif_stack"
+    },
+    "target_defects": [
+      "discontinuities",
+      "missing_features",
+      "internal_voids"
+    ],
+    "computational_constraints": "memory_efficient_vectorized"
+  },
+  "methodology_design_constraints": {
+    "processing_strategy": "Stream TIFF slices or process bounded chunks; use NumPy/SciPy-style array operations, connected components, distance transforms, and graph tables instead of per-voxel Python loops.",
+    "memory_policy": [
+      "Read scan metadata and representative slices before allocating full-volume arrays.",
+      "Prefer compact boolean/unsigned masks and chunk-wise intermediate results.",
+      "Persist only required intermediates: material mask, void mask, skeleton/graph records, and defect table.",
+      "Record voxel spacing and preserve physical coordinates throughout registration and measurement."
+    ],
+    "modality_roles": {
+      ".stl": "Nominal geometry, expected feature topology, reference coordinate frame, and feature-level correspondence.",
+      ".tif_stack": "Measured grayscale attenuation volume from which material, discontinuity, and void evidence are derived."
+    }
+  },
+  "methods": [
+    {
+      "name": "Calibrated industrial or micro-XCT acquisition",
+      "purpose": "Acquire a quantitative 3D attenuation volume that preserves thin struts, nodes, pores, and gaps.",
+      "required_inputs": ["specimen", "material and approximate density", "minimum feature of interest", "XCT scanner", "image-quality reference or calibrated artefact"],
+      "outputs": ["reconstructed grayscale volume", "voxel spacing and scanner metadata", "image-quality and detection-limit record"],
+      "core_steps": ["Select magnification, voltage/current, filtration, projections, and exposure from attenuation and smallest feature.", "Apply documented detector, beam-hardening, and scatter corrections; reconstruct with recorded settings.", "Record voxel pitch, field of view, orientation, and artefact-based image-quality checks.", "Estimate practical probability of detection before interpreting small defects."],
+      "strengths": ["Non-destructive internal and external inspection", "Supports metrology and defect inspection", "Defines the coordinate system for all downstream measurements"],
+      "limitations": ["Blur, partial volume, motion, and regularization can hide thin features.", "Beam hardening, scatter, rings, and roughness bias segmentation.", "A scan adequate for pores may be inadequate for strut metrology."],
+      "compute_cost": "Medium reconstruction cost; storage and I/O can dominate.",
+      "visualization_needed": "Yes: slices, attenuation histogram, artefact views, and volume rendering.",
+      "sources": [
+        {"title": "Standard Guide for Computed Tomography", "authors": "ASTM International", "year": 2026, "doi_or_url": "https://store.astm.org/standards/e1441", "method_support": "CT principles, performance parameters, and interpretation."},
+        {"title": "X-ray Microcomputed Tomography in Additive Manufacturing: A Review of the Current Technology and Applications", "authors": "Du Plessis et al.", "year": 2018, "doi_or_url": "https://doi.org/10.1088/2053-1591/aaa9a4", "method_support": "Micro-CT acquisition and AM inspection applications."},
+        {"title": "Validation of x-Ray Computed Tomography Detection Limits for Stochastic Flaws in Additively Manufactured Ti-6Al-4V", "authors": "Jones, Reed, Sundar, Stecko, Keist", "year": 2024, "doi_or_url": "https://www.ues.com/hubfs/JMEP%20Article%20Jones%20Reed%20Sundar%20Stecko%20Keist%202024.pdf", "method_support": "Detection-limit and validation framing for AM flaws."}
+      ]
+    },
+    {
+      "name": "Conservative preprocessing and material/void segmentation",
+      "purpose": "Separate material from air and, when justified, internal pores from material without erasing real gaps.",
+      "required_inputs": ["3D grayscale XCT volume", "voxel spacing", "material/air calibration or reference regions", "optional expert labels"],
+      "outputs": ["binary material mask", "optional pore mask", "segmentation confidence and parameter record"],
+      "core_steps": ["Crop to the specimen while retaining its boundary.", "Apply documented denoising and ring/beam-hardening correction conservatively.", "Use global or locally adaptive thresholding calibrated on representative regions.", "Remove only confirmed noise; morphology must not delete thin struts or seal true breaks.", "For difficult pores, use supervised 2D/3D models only with held-out specimens and uncertainty reporting."],
+      "strengths": ["Thresholding is transparent and fast.", "3D context reduces slice inconsistency.", "ML can handle low contrast and appearance variation."],
+      "limitations": ["Partial-volume voxels make geometry threshold-dependent.", "Roughness and density gradients mimic thin/thick regions.", "ML needs representative labels and may fail under scanner/material shift."],
+      "compute_cost": "Low-medium for thresholding; high for 3D model training/inference.",
+      "visualization_needed": "Yes: mask overlays, threshold sweeps, and 3D material/void renderings.",
+      "sources": [
+        {"title": "Porosity segmentation in X-ray computed tomography scans of metal additively manufactured specimens with machine learning", "authors": "Wong et al.", "year": 2021, "doi_or_url": "https://doi.org/10.1016/j.addlet.2020.100037", "method_support": "ML segmentation of AM porosity and specialist-agreement validation."},
+        {"title": "Automatic Volumetric Segmentation of Additive Manufacturing Defects with 3D U-Net", "authors": "Wong et al.", "year": 2021, "doi_or_url": "https://arxiv.org/abs/2101.08993", "method_support": "3D volumetric defect segmentation for small, low-contrast defects."},
+        {"title": "New Test Method for Additive Manufacturing of Metals -- Non-destructive testing and evaluation -- Porosity Measurement with X-ray CT", "authors": "ASTM F42.01 work item WK76038", "year": 2021, "doi_or_url": "https://store.astm.org/products-services/standards-and-publications/standards/workitem-wk76038", "method_support": "Reference-artefact calibration and traceable XCT porosity measurement."}
+      ]
+    },
+    {
+      "name": "Topology-preserving skeletonization and graph extraction",
+      "purpose": "Convert the segmented lattice into nodes and edges for connectivity and strut-level analysis.",
+      "required_inputs": ["cleaned binary material mask", "voxel spacing", "optional CAD topology or expected nodes"],
+      "outputs": ["3D skeleton/centerline", "nodes and edges", "edge lengths/orientations", "components, endpoints, and branch points"],
+      "core_steps": ["Use a 3D medial-axis or topology-preserving thinning method with explicit connectivity conventions.", "Prune only short low-persistence branches attributable to noise.", "Detect branch points/endpoints and collapse node neighborhoods into graph nodes.", "Trace paths between nodes as strut edges.", "Compare component count, node degree, edge presence, and path continuity to expected topology; retain the mask as geometry authority."],
+      "strengths": ["Makes connectivity and missing/broken members explicit.", "Efficiently summarizes repeated unit cells.", "Supports orientation, deformation, and node-degree metrics."],
+      "limitations": ["Sensitive to segmentation noise, anisotropy, roughness, and node geometry.", "Naive thinning creates spurious branches.", "Threshold bridges can make a broken strut appear connected."],
+      "compute_cost": "Medium-high CPU/memory for large masks; graph construction is low.",
+      "visualization_needed": "Yes: skeleton overlaid on slices/volume and a status-colored graph.",
+      "sources": [
+        {"title": "Building Skeleton Models via 3-D Medial Surface Axis Thinning Algorithms", "authors": "Lee, Kashyap, Chu", "year": 1994, "doi_or_url": "https://doi.org/10.1006/cgip.1994.1042", "method_support": "3D thinning with local connectivity and Euler-characteristic preservation."},
+        {"title": "Geometric and Topological Analysis of Three-Dimensional Porous Media: Pore Space Partitioning Based on Morphological Skeletonization", "authors": "Lindquist, Venkatarangan, Dunsmuir, Wong, Coker", "year": 2000, "doi_or_url": "https://doi.org/10.1006/jcis.1999.6559", "method_support": "Connectivity-preserving skeletonization and node/link classification."},
+        {"title": "Evaluation of rods deformation of metal lattice structure in additive manufacturing based on skeleton extraction technology", "authors": "Wu, Dai, Wang", "year": 2021, "doi_or_url": "https://doi.org/10.3934/mbe.2021372", "method_support": "CT reconstruction and skeleton extraction for lattice-rod deformation."}
+      ]
+    },
+    {
+      "name": "Distance-transform strut thickness measurement",
+      "purpose": "Estimate local radius/diameter and detect thin, thick, or necked regions along each strut.",
+      "required_inputs": ["binary material mask", "skeleton/medial axis", "physical voxel spacing", "nominal diameter and tolerance bands"],
+      "outputs": ["radius/diameter profile per edge", "robust summary statistics", "thin/thick/necking flags and locations"],
+      "core_steps": ["Compute an anisotropic Euclidean distance transform from material to background in physical units.", "Sample distances on the centerline; local diameter is approximately twice the centerline distance.", "Exclude or separately model node blends and endpoints.", "Flag sustained deviations over a minimum physical run length, not single voxels.", "Repeat over perturbed thresholds or with surface measurements to estimate uncertainty."],
+      "strengths": ["Fast, interpretable, and useful on curved struts.", "Avoids fitting a cylinder to every member.", "Provides a local process-gradient signal."],
+      "limitations": ["Biased for non-circular, rough, tapered, or intersecting struts.", "Node overlap needs separate treatment.", "All errors in the mask and voxel spacing propagate to thickness."],
+      "compute_cost": "Low-medium; distance transform is linear in voxel count.",
+      "visualization_needed": "Yes: radius-colored centerlines and edge profiles.",
+      "sources": [
+        {"title": "Skeletonization and distance transforms of 3D volumes using graphics hardware", "authors": "van Dortmont, van de Wetering, Telea", "year": 2006, "doi_or_url": "https://doi.org/10.1007/11907350_52", "method_support": "3D distance transforms and skeleton computation."},
+        {"title": "Medial axis example: skeletonize", "authors": "scikit-image developers; based on Lee et al.", "year": 2024, "doi_or_url": "https://scikit-image.org/docs/0.24.x/auto_examples/edges/plot_skeleton.html", "method_support": "Medial-axis distance as a local width estimate."},
+        {"title": "Image-Based Geometrical Characterization of Nodes in Additively Manufactured Lattice Structures", "authors": "Kladovasilakis et al.", "year": 2023, "doi_or_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9828589/", "method_support": "μCT geometry characterization and separate treatment of lattice nodes."}
+      ]
+    },
+    {
+      "name": "Rule-based missing, broken, thin, thick, and bent-strut classification",
+      "purpose": "Produce auditable per-strut defect records from graph, geometry, and registered-CAD evidence.",
+      "required_inputs": ["observed skeleton graph", "diameter profiles", "material mask", "nominal CAD topology/dimensions", "tolerance definitions"],
+      "outputs": ["defect class, severity, confidence, and coordinates per edge/node", "specimen-level counts and rates"],
+      "core_steps": ["Missing: expected CAD edge has no matching centerline/material support.", "Broken: expected edge is split, has a material-support gap, or terminates away from a node.", "Thin/thick: sustained robust diameter excursion crosses a calibrated band.", "Bent: registered centerline deviates from nominal axis by distance, angle, or curvature tolerance.", "Use confirmed, probable, and review-required confidence tiers because classes can overlap."],
+      "strengths": ["Transparent and auditable for an MVP.", "Combines topology and metrology.", "Produces actionable per-strut records."],
+      "limitations": ["Needs nominal topology and engineering tolerances.", "Defect classes can overlap.", "Thresholds depend on process and scan resolution."],
+      "compute_cost": "Low after graph and profiles exist.",
+      "visualization_needed": "Yes: class-colored overlays and linked slice review.",
+      "sources": [
+        {"title": "LatticeAnalytics: Strut-Level Visualization and Inspection of Additively Manufactured Lattice Structures", "authors": "Miao et al.", "year": 2025, "doi_or_url": "https://doi.org/10.1109/TVCG.2025.3593230", "method_support": "End-to-end XCT lattice inspection with strut-level visualization."},
+        {"title": "Computational modelling of strut defects in SLM manufactured lattice structures", "authors": "Choong, Brandt", "year": 2019, "doi_or_url": "https://doi.org/10.1016/j.matdes.2019.107671", "method_support": "μCT-derived strut defects and geometric imperfections."},
+        {"title": "Analysis of defects in additively manufactured lattice structures", "authors": "Nottingham ePrints thesis", "year": 2023, "doi_or_url": "https://eprints.nottingham.ac.uk/73758/", "method_support": "XCT geometric deviations grouped by orientation and statistically modeled."}
+      ]
+    },
+    {
+      "name": "Defect spatial clustering and edge-versus-center analysis",
+      "purpose": "Identify random, clustered, build-direction, or specimen-boundary-associated defect patterns.",
+      "required_inputs": ["defect coordinates/severity", "strut/node locations", "specimen boundary", "build direction", "unit-cell size"],
+      "outputs": ["density maps", "cluster labels/scores", "edge-versus-center rates", "height/orientation summaries"],
+      "core_steps": ["Assign findings to unit cell, height, orientation, node/edge zone, and boundary-distance bin.", "Compare counts with exposure-adjusted expected counts because edge bins may contain different numbers of members.", "Use nearest-neighbor distances, DBSCAN/hierarchical clustering for exploration, and permutation or Ripley-type tests for inference.", "Report bootstrap or specimen-level uncertainty and distinguish detection opportunity from occurrence."],
+      "strengths": ["Reveals process gradients invisible in global counts.", "Works with voxel objects or graph-level records.", "Supports targeted process feedback."],
+      "limitations": ["Depends on scale, edge definition, and detection bias.", "One specimen gives weak statistical power.", "Null models must account for periodic/nonuniform lattice geometry."],
+      "compute_cost": "Low-medium.",
+      "visualization_needed": "Yes: 3D point clouds, boundary-distance maps, and axial/orientation histograms.",
+      "sources": [
+        {"title": "LatticeAnalytics: Strut-Level Visualization and Inspection of Additively Manufactured Lattice Structures", "authors": "Miao et al.", "year": 2025, "doi_or_url": "https://doi.org/10.1109/TVCG.2025.3593230", "method_support": "Spatial and strut-level visual inspection of XCT lattice defects."},
+        {"title": "Analysis of defects in additively manufactured lattice structures", "authors": "Nottingham ePrints thesis", "year": 2023, "doi_or_url": "https://eprints.nottingham.ac.uk/73758/", "method_support": "Orientation-grouped statistical analysis of XCT deviations."}
+      ]
+    },
+    {
+      "name": "CT-to-CAD and CT-to-graph registration",
+      "purpose": "Match as-built XCT geometry to nominal CAD so each observed member has an expected edge and measurable deviation.",
+      "required_inputs": ["segmented XCT surface/point cloud", "nominal CAD mesh/centerlines/topology", "build direction or datum features", "voxel spacing"],
+      "outputs": ["rigid transform and residuals", "matched CAD/CT edges and nodes", "deviation fields and correspondence quality"],
+      "core_steps": ["Establish coarse orientation with build direction, envelope, fiducials, or robust datums.", "Perform robust rigid registration with outlier rejection; do not let defects drive the transform.", "Use periodicity and graph topology to associate edges.", "Validate using independent datums, residual distributions, sampling sensitivity, and registration uncertainty."],
+      "strengths": ["Enables direct missing-edge and bend detection.", "Separates global pose from local deviation.", "Supports comparison across specimens and modalities."],
+      "limitations": ["Periodic symmetry can make matches ambiguous.", "Roughness and defects bias unconstrained ICP-like methods.", "Registration error may be comparable to the defect magnitude."],
+      "compute_cost": "Medium-high for point-cloud registration; graph matching is lower.",
+      "visualization_needed": "Yes: before/after overlays, residual heat maps, and matched edge IDs.",
+      "sources": [
+        {"title": "Data registration for multi-method qualification of additive manufactured components", "authors": "Muralikrishnan et al.", "year": 2020, "doi_or_url": "https://doi.org/10.1016/j.addma.2020.101292", "method_support": "Datum-based and refined sampling registration for XCT/CMM/CAD lattice qualification."},
+        {"title": "Dimensional verification of metal additively manufactured lattice structures by X-ray computed tomography", "authors": "Todorov et al.", "year": 2021, "doi_or_url": "https://doi.org/10.1016/j.addma.2021.102229", "method_support": "Traceable XCT dimensional verification and lattice metrology challenges."},
+        {"title": "Exploring Registration of Optical, CMM and XCT for Verification of Supplemental Surfaces to Define AM Lattices", "authors": "Muralikrishnan et al.", "year": 2021, "doi_or_url": "https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=929475", "method_support": "Registration and supplemental-surface concepts for AM lattice metrology."}
+      ]
+    },
+    {
+      "name": "3D visualization and validation reporting",
+      "purpose": "Make automated findings auditable and verify each flag against grayscale, mask, graph, and CAD evidence.",
+      "required_inputs": ["grayscale volume", "masks", "skeleton graph", "defect table", "CAD registration", "labels or independent measurements"],
+      "outputs": ["interactive/static report", "slice-linked defect panels", "quality-control and validation metrics"],
+      "core_steps": ["Synchronize orthogonal grayscale, mask, skeleton, CAD, and defect overlays.", "Render material, graph, defects, and boundary-distance maps in 3D.", "For each reviewed finding, show local slices plus edge ID, coordinates, dimensions, threshold, and confidence.", "Validate with expert overlap, reference artefacts, designed flaws, CMM/optical checks, or sectioning when feasible.", "Track repeatability across thresholds, operators, resampling, and repeated scans."],
+      "strengths": ["Exposes silent failures in segmentation, graph extraction, and registration.", "Provides engineering evidence rather than only summary numbers.", "Supports reproducibility and audit."],
+      "limitations": ["Occlusion and surface noise can mislead visual interpretation.", "Visual agreement does not establish metrological uncertainty or probability of detection.", "Interactive reports add storage and implementation cost."],
+      "compute_cost": "Low-medium for static figures; medium-high for interactive volume rendering.",
+      "visualization_needed": "Essential.",
+      "sources": [
+        {"title": "LatticeAnalytics: Strut-Level Visualization and Inspection of Additively Manufactured Lattice Structures", "authors": "Miao et al.", "year": 2025, "doi_or_url": "https://doi.org/10.1109/TVCG.2025.3593230", "method_support": "Strut-level visual analytics for XCT lattices."},
+        {"title": "Standard Guide for Computed Tomography", "authors": "ASTM International", "year": 2026, "doi_or_url": "https://store.astm.org/standards/e1441", "method_support": "Industrial CT performance and interpretation terminology."}
+      ]
+    }
+  ],
+  "recommended_minimum_viable_pipeline": {
+    "goal": "Auditable first-pass inspection of one lattice specimen.",
+    "steps": [
+      "Acquire calibrated XCT at a voxel pitch appropriate to the smallest strut/defect; retain metadata and detection-limit evidence.",
+      "Conservatively correct/crop and threshold a material mask; perform threshold sensitivity checks without filling suspected gaps.",
+      "Compute a topology-preserving 3D skeleton and graph; compare components, node degrees, endpoints, and expected topology.",
+      "Register the graph/surface to nominal CAD using robust datums and constrained rigid alignment.",
+      "For each expected strut, classify missing/broken status, calculate distance-transform diameter profiles, and flag sustained thin/thick deviations; measure centerline-to-CAD bend deviation.",
+      "Map findings to unit cell, orientation, build height, and boundary distance; report simple clustering and edge-versus-center rates.",
+      "Generate slice-linked 2D/3D evidence for every flag and record thresholds, tolerances, residuals, confidence, and uncertainty.",
+      "Manually review representative normal/flagged members and, where feasible, compare selected dimensions or designed flaws with an independent method."
+    ],
+    "minimum_outputs": ["material mask", "skeleton graph", "per-strut geometry table", "defect table", "spatial summaries", "visual validation report", "processing metadata"]
+  },
+  "open_technical_risks": [
+    "Resolution and partial volume can make the smallest feature non-detectable; a negative result is not proof of absence.",
+    "Threshold, beam hardening, roughness, and node overlap can create or erase apparent connections.",
+    "Skeleton topology and distance-transform thickness are unstable near nodes, rough surfaces, and resolution-limited gaps.",
+    "Periodic CAD symmetry can make registration ambiguous; unconstrained alignment can absorb real global distortion.",
+    "Thin, broken, and missing classes can overlap and require engineering tolerances and minimum run lengths.",
+    "One specimen has weak power for clustering and edge-versus-center inference.",
+    "ML methods require representative labels and may not transfer across material, process, scanner, or reconstruction settings.",
+    "Visualization supports review but cannot replace calibrated metrology, repeat scans, independent measurements, or probability-of-detection studies."
+  ]
+}

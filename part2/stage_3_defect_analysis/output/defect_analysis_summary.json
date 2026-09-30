@@ -1,0 +1,84 @@
+{
+  "created_utc": "2026-07-27T18:22:40.988656+00:00",
+  "scan": "/home/hannahdc/llnl_data_science_challenge_2026/part2/data/missing_struts/tif_stacks/210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.tif",
+  "registration": "/home/hannahdc/llnl_data_science_challenge_2026/part2/registration/alignment_check/candidate_affine_registered.json",
+  "inventory": "/home/hannahdc/llnl_data_science_challenge_2026/part2/registration/alignment_check/stage2a_candidate_registration_output/all_struts_inventory.csv",
+  "processed_struts": 18468,
+  "scan_shape": [
+    761,
+    815,
+    837
+  ],
+  "scan_dtype": ">u2",
+  "parameters": {
+    "threshold": 40081.0,
+    "voxel_size_um": 58.09,
+    "nominal_radius_voxels": 6.0,
+    "outer_radius_factor": 1.5,
+    "trim_fraction": 0.2,
+    "stations": 21,
+    "empty_station_fraction": 0.05,
+    "batch_size": 96,
+    "score_threshold": 3.0
+  },
+  "nominal_reference_population": 9054,
+  "feature_baselines": {
+    "sampled_occupancy": {
+      "median": 0.29456382989883423,
+      "robust_scale": 0.07747260711193084
+    },
+    "sampled_mean_intensity": {
+      "median": 38061.6484375,
+      "robust_scale": 1335.59094375
+    },
+    "median_radius_um": {
+      "median": 188.27099609375,
+      "robust_scale": 24.316350274658202
+    },
+    "p10_radius_um": {
+      "median": 170.29751586914062,
+      "robust_scale": 22.38568546142578
+    },
+    "radius_cv": {
+      "median": 0.06467929482460022,
+      "robust_scale": 0.030112442136928437
+    },
+    "median_excess_fraction": {
+      "median": 0.0,
+      "robust_scale": 1e-06
+    },
+    "max_centerline_offset_um": {
+      "median": 129.8080596923828,
+      "robust_scale": 63.263381980133055
+    },
+    "rms_centerline_offset_um": {
+      "median": 97.9710693359375,
+      "robust_scale": 62.132915316009516
+    },
+    "bend_curvature_um": {
+      "median": 52.82687759399414,
+      "robust_scale": 17.31734815864563
+    },
+    "valid_station_fraction": {
+      "median": 1.0,
+      "robust_scale": 1e-06
+    }
+  },
+  "primary_defect_counts": {
+    "Inflated": 4187,
+    "Nominal": 13155,
+    "Bent": 236,
+    "Missing_Intentional": 87,
+    "Broken": 109,
+    "Missing_Unintentional": 331,
+    "Thin": 363
+  },
+  "station_output_written": false,
+  "parquet_warning": null,
+  "limitations": [
+    "Bent, thin, inflated, and broken labels are screening calls calibrated from robust nominal behavior, not manually validated ground truth.",
+    "Stage 2a missing labels are preserved and are not reclassified by this program.",
+    "Outside-nominal material is a cross-sectional excess proxy; attachedness requires local component analysis before a production dross/inflation claim."
+  ],
+  "report_warning": null
+}

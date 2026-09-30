@@ -1,0 +1,68 @@
+{
+  "voxel_size_um_xyz": [
+    58.09,
+    58.09,
+    58.09
+  ],
+  "design_thickness_um": 350.0,
+  "source_summary": "part2\\developer\\output\\anomaly_summary.json",
+  "density": {
+    "whole_bbox_zyx_voxels": [
+      191,
+      183,
+      188
+    ],
+    "whole_bbox_material_relative_density": 0.17022250548000323,
+    "interior_trim_rule": "remove one pooled-mask voxel from each bbox face where possible",
+    "interior_trimmed_1_voxel_relative_density": 0.16574617067696137
+  },
+  "thickness": {
+    "count": 1118560,
+    "min_um": 116.18,
+    "mean_um": 338.9767524116448,
+    "median_um": 116.18,
+    "max_um": 1437.0672347527793,
+    "quantiles_um": {
+      "p5": 116.18,
+      "p25": 116.18,
+      "p50": 116.18,
+      "p75": 532.4036442399695,
+      "p95": 992.6423551309907
+    },
+    "design_thickness_um": 350.0,
+    "median_to_design_ratio": 0.33194285714285715,
+    "note": "Local thickness is twice the distance-to-background radius; values are limited by the pooled-mask resolution."
+  },
+  "spatial_stage2a": {
+    "candidate_count": 572,
+    "edge_definition": "any normalized coordinate below 0.2 or above 0.8",
+    "edge_count": 553,
+    "center_count": 19,
+    "edge_fraction": 0.9667832167832168,
+    "observed_mean_nearest_neighbor_normalized": 0.052691046547129486,
+    "random_reference_mean_nearest_neighbor_normalized": 0.06972173675709496,
+    "nearest_neighbor_ratio_observed_over_random": 0.7557334197038283,
+    "spatial_classification": "clustered"
+  },
+  "spatial_stage2b_reviewed": {
+    "candidate_count": 20,
+    "edge_definition": "any normalized coordinate below 0.2 or above 0.8",
+    "edge_count": 20,
+    "center_count": 0,
+    "edge_fraction": 1.0,
+    "observed_mean_nearest_neighbor_normalized": 0.1057312947994324,
+    "random_reference_mean_nearest_neighbor_normalized": 0.23191751381956138,
+    "nearest_neighbor_ratio_observed_over_random": 0.4559004322618534,
+    "spatial_classification": "clustered"
+  },
+  "plots": [
+    "part2\\reporting\\thickness_distribution.png",
+    "part2\\reporting\\spatial_distribution.png"
+  ],
+  "limitations": [
+    "Measurements use the Stage 2a factor-4 max-pooled mask.",
+    "Outer-skin exclusion is an inward one-voxel bbox trim, not a CAD-derived wall mask.",
+    "Distance-transform thickness is an apparent segmented thickness and is resolution-limited.",
+    "Spatial edge/center and clustering thresholds are descriptive, not defect-certification criteria."
+  ]
+}

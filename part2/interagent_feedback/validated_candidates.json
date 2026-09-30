@@ -1,0 +1,862 @@
+[
+  {
+    "ID": "strut-00010",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        79.04,
+        52.25,
+        85.71
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 10,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00200",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.21,
+        68.37,
+        46.74
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 200,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00201",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.41,
+        107.86,
+        46.63
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 201,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00202",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.18,
+        68.48,
+        86.23
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 202,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00203",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.38,
+        107.96,
+        86.12
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 203,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00214",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        750.54,
+        88.32,
+        86.16
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.619,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 23.1% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 214,
+      "support_fraction": 0.2308,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.1538,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 15.4% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00218",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        730.89,
+        108.17,
+        86.09
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 218,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.1538,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 15.4% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00420",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.61,
+        147.34,
+        46.52
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 420,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00421",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.82,
+        186.83,
+        46.41
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 421,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00422",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.58,
+        147.45,
+        86.01
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 422,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00423",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.78,
+        186.94,
+        85.9
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 423,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00640",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        771.02,
+        226.32,
+        46.3
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 640,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00642",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.98,
+        226.43,
+        85.79
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 642,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00643",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        771.19,
+        265.92,
+        85.68
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 643,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00862",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        771.39,
+        305.41,
+        85.57
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 862,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00863",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        771.59,
+        344.89,
+        85.46
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 863,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 0.0% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-00946",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        278.28,
+        406.64,
+        84.89
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 946,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0769,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 7.7% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-01310",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        713.17,
+        503.09,
+        65.23
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 1310,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.2308,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 23.1% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-01666",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        457.29,
+        662.41,
+        84.33
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 1666,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.0769,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 7.7% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  },
+  {
+    "ID": "strut-01728",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        674.29,
+        621.76,
+        64.87
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 1728,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "agent": "validation-agent",
+      "method": "PyVista off-screen 3D mask rendering plus raw-threshold strut inspection",
+      "raw_threshold": 40264.0,
+      "raw_local_support_fraction": 0.1538,
+      "sample_count": 13,
+      "views": [
+        "stage2b_view_1_overview.png",
+        "stage2b_view_2_elevated.png",
+        "stage2b_view_3_side.png"
+      ],
+      "assessment": "confirmed_missing_or_broken_strut",
+      "rationale": "Raw CT neighborhood support along the registered strut was 15.4% across 13 interior samples; the candidate remains a visual-validation finding."
+    }
+  }
+]

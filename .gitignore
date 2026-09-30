@@ -1,4 +1,21 @@
-# Byte-compiled / optimized / DLL files
+# Generated volumetric data and masks
+*.tif
+*.tiff
+*.npy
+*.npz
+*.memmap
+
+# Generated visualization images
+*.png
+*.jpg
+*.jpeg
+
+# Generated output and visualization directories
+**/output/
+**/outputs/
+**/visualization/
+**/visualizations/
+**/*_output/
 __pycache__/
 *.py[cod]
 *$py.class
@@ -172,3 +189,27 @@ ehthumbs.db
 Thumbs.db
 
 result
+data/9x9x9_octet_lattice/9x9x9_octet_lattice.tif
+PacificVisDatasets/
+part1
+part2/data
+part2/.agents/temp.md
+part2/registration/modified_pipeline
+.agents/
+.codex/
+data/
+images/
+nde_view_a.jpg
+nde_view_b.jpg
+outputs/
+part2/developer/
+part2/interagent_feedback/stage2b_view_1_overview.jpg
+part2/interagent_feedback/stage2b_view_2_elevated.jpg
+part2/interagent_feedback/stage2b_view_3_side.jpg
+part2/reporting/
+part2/stage_2a_developer_output/intensity_threshold_histogram.jpg
+part2/stage_2a_developer_output/stage2b_revision_justification_iter_1.jpg
+part2/stage_2a_developer_output/strut_anomaly_histograms.jpg
+part2/visual_reasoner/
+data/missing_struts/tif_stacks/210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.tif
+>>>>>>> hannahyuan_part2

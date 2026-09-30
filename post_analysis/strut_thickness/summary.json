@@ -1,0 +1,42 @@
+{
+  "source_inventory": "part2/stage_2a_developer_output/all_struts_inventory.csv",
+  "strut_count": 18468,
+  "measure": "occupancy-derived effective diameter proxy",
+  "formula": "2 * nominal_radius_um * sqrt(ct_material_occupancy)",
+  "cad_model_thickness_parameter": 0.1,
+  "nominal_radius_voxels": 6.0,
+  "voxel_size_um": 58.09,
+  "nominal_radius_um": 348.54,
+  "cad_reference_diameter_um": 697.08,
+  "all_struts": {
+    "mean_thickness_proxy_um": 342.2769027041872,
+    "median_thickness_proxy_um": 337.36350824867463,
+    "std_thickness_proxy_um": 115.97835474512463,
+    "min_thickness_proxy_um": 0.0,
+    "max_thickness_proxy_um": 697.08,
+    "p05_thickness_proxy_um": 160.7437480431795,
+    "p95_thickness_proxy_um": 534.9591031583758
+  },
+  "by_classification": {
+    "Expected_Missing_But_Material_Present": {
+      "count": 5,
+      "mean_thickness_proxy_um": 273.04108482657927,
+      "median_thickness_proxy_um": 183.50459309955392
+    },
+    "Missing_Intentional": {
+      "count": 87,
+      "mean_thickness_proxy_um": 46.83776164261513,
+      "median_thickness_proxy_um": 38.79407561429044
+    },
+    "Missing_Unintentional": {
+      "count": 630,
+      "mean_thickness_proxy_um": 43.05331907258361,
+      "median_thickness_proxy_um": 0.0
+    },
+    "Nominal": {
+      "count": 17746,
+      "mean_thickness_proxy_um": 354.3675283127556,
+      "median_thickness_proxy_um": 341.1066904061063
+    }
+  }
+}

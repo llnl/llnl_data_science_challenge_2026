@@ -1,0 +1,1262 @@
+[
+  {
+    "ID": "strut-00010",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        79.04,
+        52.25,
+        85.71
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 10,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        69,
+        36,
+        70
+      ],
+      "actual_crop_start_xyz": [
+        69,
+        36,
+        70
+      ],
+      "actual_crop_end_xyz": [
+        89,
+        68,
+        102
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.000488,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00010\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00010\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00010\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00200",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.21,
+        68.37,
+        46.74
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 200,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        760,
+        52,
+        31
+      ],
+      "actual_crop_start_xyz": [
+        760,
+        52,
+        31
+      ],
+      "actual_crop_end_xyz": [
+        780,
+        84,
+        63
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.047266,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00200\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00200\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00200\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00201",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.41,
+        107.86,
+        46.63
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 201,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        760,
+        92,
+        31
+      ],
+      "actual_crop_start_xyz": [
+        760,
+        92,
+        31
+      ],
+      "actual_crop_end_xyz": [
+        780,
+        124,
+        63
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.065283,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00201\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00201\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00201\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00202",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.18,
+        68.48,
+        86.23
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 202,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        760,
+        52,
+        70
+      ],
+      "actual_crop_start_xyz": [
+        760,
+        52,
+        70
+      ],
+      "actual_crop_end_xyz": [
+        780,
+        84,
+        102
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.047559,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00202\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00202\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00202\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00203",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.38,
+        107.96,
+        86.12
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 203,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        760,
+        92,
+        70
+      ],
+      "actual_crop_start_xyz": [
+        760,
+        92,
+        70
+      ],
+      "actual_crop_end_xyz": [
+        780,
+        124,
+        102
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.043799,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00203\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00203\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00203\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00214",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        750.54,
+        88.32,
+        86.16
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.619,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 23.1% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 214,
+      "support_fraction": 0.2308,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        741,
+        72,
+        70
+      ],
+      "actual_crop_start_xyz": [
+        741,
+        72,
+        70
+      ],
+      "actual_crop_end_xyz": [
+        761,
+        104,
+        102
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.033008,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00214\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00214\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00214\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00218",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        730.89,
+        108.17,
+        86.09
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 218,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        721,
+        92,
+        70
+      ],
+      "actual_crop_start_xyz": [
+        721,
+        92,
+        70
+      ],
+      "actual_crop_end_xyz": [
+        741,
+        124,
+        102
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.074316,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00218\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00218\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00218\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00420",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.61,
+        147.34,
+        46.52
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 420,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        761,
+        131,
+        31
+      ],
+      "actual_crop_start_xyz": [
+        761,
+        131,
+        31
+      ],
+      "actual_crop_end_xyz": [
+        781,
+        163,
+        63
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.066016,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00420\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00420\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00420\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00421",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.82,
+        186.83,
+        46.41
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 421,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        761,
+        171,
+        30
+      ],
+      "actual_crop_start_xyz": [
+        761,
+        171,
+        30
+      ],
+      "actual_crop_end_xyz": [
+        781,
+        203,
+        62
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.081201,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00421\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00421\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00421\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00422",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.58,
+        147.45,
+        86.01
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 422,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        761,
+        131,
+        70
+      ],
+      "actual_crop_start_xyz": [
+        761,
+        131,
+        70
+      ],
+      "actual_crop_end_xyz": [
+        781,
+        163,
+        102
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.051221,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00422\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00422\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00422\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00423",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.78,
+        186.94,
+        85.9
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 423,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        761,
+        171,
+        70
+      ],
+      "actual_crop_start_xyz": [
+        761,
+        171,
+        70
+      ],
+      "actual_crop_end_xyz": [
+        781,
+        203,
+        102
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.043799,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00423\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00423\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00423\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00640",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        771.02,
+        226.32,
+        46.3
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 640,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        761,
+        210,
+        30
+      ],
+      "actual_crop_start_xyz": [
+        761,
+        210,
+        30
+      ],
+      "actual_crop_end_xyz": [
+        781,
+        242,
+        62
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.074658,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00640\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00640\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00640\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00642",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        770.98,
+        226.43,
+        85.79
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 642,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        761,
+        210,
+        70
+      ],
+      "actual_crop_start_xyz": [
+        761,
+        210,
+        70
+      ],
+      "actual_crop_end_xyz": [
+        781,
+        242,
+        102
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.051318,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00642\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00642\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00642\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00643",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        771.19,
+        265.92,
+        85.68
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 643,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        761,
+        250,
+        70
+      ],
+      "actual_crop_start_xyz": [
+        761,
+        250,
+        70
+      ],
+      "actual_crop_end_xyz": [
+        781,
+        282,
+        102
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.042334,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00643\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00643\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00643\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00862",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        771.39,
+        305.41,
+        85.57
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.85,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 0.0% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 862,
+      "support_fraction": 0.0,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        761,
+        289,
+        70
+      ],
+      "actual_crop_start_xyz": [
+        761,
+        289,
+        70
+      ],
+      "actual_crop_end_xyz": [
+        781,
+        321,
+        102
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.05249,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00862\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00862\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00862\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00863",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        771.59,
+        344.89,
+        85.46
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 863,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        762,
+        329,
+        69
+      ],
+      "actual_crop_start_xyz": [
+        762,
+        329,
+        69
+      ],
+      "actual_crop_end_xyz": [
+        782,
+        361,
+        101
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.038184,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00863\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00863\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00863\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-00946",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        278.28,
+        406.64,
+        84.89
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 946,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        268,
+        391,
+        69
+      ],
+      "actual_crop_start_xyz": [
+        268,
+        391,
+        69
+      ],
+      "actual_crop_end_xyz": [
+        288,
+        423,
+        101
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.012061,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-00946\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-00946\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-00946\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-01310",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        713.17,
+        503.09,
+        65.23
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 1310,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        703,
+        487,
+        49
+      ],
+      "actual_crop_start_xyz": [
+        703,
+        487,
+        49
+      ],
+      "actual_crop_end_xyz": [
+        723,
+        519,
+        81
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.025244,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-01310\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-01310\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-01310\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-01666",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        457.29,
+        662.41,
+        84.33
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 1666,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        447,
+        646,
+        68
+      ],
+      "actual_crop_start_xyz": [
+        447,
+        646,
+        68
+      ],
+      "actual_crop_end_xyz": [
+        467,
+        678,
+        100
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.029736,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-01666\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-01666\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-01666\\side.png"
+      ]
+    }
+  },
+  {
+    "ID": "strut-01728",
+    "type": "possible_missing_or_broken_strut",
+    "location": {
+      "voxel_xyz": [
+        674.29,
+        621.76,
+        64.87
+      ],
+      "coordinate_system": "registered_CT"
+    },
+    "confidence": 0.542,
+    "crop_size": {
+      "voxels_xyz": [
+        20,
+        32,
+        32
+      ],
+      "downsample_factor": 4
+    },
+    "reason": "Registered expected strut has 30.8% local material support along 13 interior samples (threshold 35.0%).",
+    "status": "validated_stage_2b",
+    "evidence": {
+      "strut_id": 1728,
+      "support_fraction": 0.3077,
+      "sample_count": 13,
+      "physical_length_in_input_units": 55.85
+    },
+    "visual_validation": {
+      "validator": "validation-agent",
+      "method": "local TIFF crop rendered with PyVista off-screen",
+      "threshold": 40264.0,
+      "scan_shape_zyx": [
+        761,
+        815,
+        837
+      ],
+      "requested_crop_start_xyz": [
+        664,
+        606,
+        49
+      ],
+      "actual_crop_start_xyz": [
+        664,
+        606,
+        49
+      ],
+      "actual_crop_end_xyz": [
+        684,
+        638,
+        81
+      ],
+      "crop_was_clipped": false,
+      "near_scan_boundary": false,
+      "material_fraction_in_crop": 0.02041,
+      "assessment": "confirmed_missing_or_broken_strut",
+      "views": [
+        "part2\\visual_reasoner\\outputs\\strut-01728\\isometric.png",
+        "part2\\visual_reasoner\\outputs\\strut-01728\\front.png",
+        "part2\\visual_reasoner\\outputs\\strut-01728\\side.png"
+      ]
+    }
+  }
+]

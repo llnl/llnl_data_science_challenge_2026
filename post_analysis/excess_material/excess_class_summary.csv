@@ -1,0 +1,5 @@
+classification,struts,struts_with_excess,fraction_with_excess,total_excess_voxels,median_excess_voxels,median_positive_excess_voxels,p95_excess_voxels,median_ct_material_occupancy
+Nominal,17746,3915,0.2206130959089372,293731,0.0,16.0,96.75,0.2394502535462379
+Missing_Intentional,87,3,0.034482758620689655,9,0.0,2.0,0.0,0.0030971737578511
+Expected_Missing_But_Material_Present,5,5,1.0,344,4.0,4.0,206.2,0.0692992657423019
+Missing_Unintentional,630,297,0.4714285714285714,7254,0.0,24.0,35.0,0.0

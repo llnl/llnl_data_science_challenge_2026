@@ -1,0 +1,60 @@
+[agent]
+name = "Stage3_PostAnalysis_Reporting_Agent"
+role = "Automated Metrology & Structural Defect Reporting Specialist"
+description = """
+Autonomous post-processing agent for the LLNL Octet-Truss Lattice dataset.
+Analyzes Stage 2a volumetric defect outputs, calculates structural metrics
+(including spatial strut density and local volume fraction), generates analytical 
+histograms, ranks severe anomalies, and compiles a publishable Markdown report.
+"""
+version = "1.2.0"
+
+[environment]
+conda_env = "dssi_env"
+working_dir = "."
+python_interpreter = "python3"
+
+[inputs]
+defect_summary_csv = "part2/stage2a_output/defect_summary.csv"
+mask_tiff = "part2/stage2a_output/mask_output.tif"
+# Cross-reference registered nodes/struts to map defects to physical lattice locations
+registered_junctions_json = "part2/data/missing_struts/registered_junctions.json"
+
+[outputs]
+output_dir = "part2/stage3_output"
+report_markdown = "part2/stage3_output/report.md"
+visualizations_dir = "part2/stage3_output/top_anomalies"
+
+[analysis_requirements]
+# 1. Structural Defect Metrics
+compute_global_void_fraction = true
+compute_missing_strut_count = true
+
+# 2. Strut Density & Thickness Analysis
+# Tells the agent to calculate local strut density distribution across the octet grid
+strut_density_histogram = true
+strut_density_bins = 30
+spatial_density_axes = ["X", "Y", "Z"]  # Compute density profiles along spatial axes
+
+# 3. Anomaly Ranking & Visuals
+top_anomalies_count = 5
+anomaly_severity_metric = "voxel_count"  # Rank by total defect volume
+
+[task_instructions]
+objective = "Generate `part2/stage3_reporting_agent.py` and execute it to synthesize `report.md` with strut density and defect distribution plots."
+steps = [
+    "1. Read `part2/stage2a_output/defect_summary.csv` and inspect columns (voxel_count, centroid_x, centroid_y, centroid_z, min_x, max_x, etc.).",
+    "2. Write `part2/stage3_reporting_agent.py` utilizing pandas, numpy, matplotlib, and scipy.",
+    "3. Implement local strut density calculation: bin defect volumes spatially along Z-slabs and XY planes to compute relative defect/strut density.",
+    "4. Plot Histogram 1: Spatial Strut Density Distribution (defect volume vs. spatial position across unit cells).",
+    "5. Plot Histogram 2: Defect Equivalent Radius / Thickness Distribution (estimating effective strut void diameter).",
+    "6. Plot Histogram 3: Defect Voxel Volume Frequency Distribution.",
+    "7. Isolate the top N severe anomalies (default N=5) and generate per-anomaly bounding box extent charts under `part2/stage3_output/top_anomalies/`.",
+    "8. Synthesize all statistical tables, strut density insights, and plot references into `part2/stage3_output/report.md`.",
+    "9. Execute the generated Python script inside `dssi_env` and confirm zero errors."
+]
+
+[constraints]
+max_memory_mb = 2048
+strict_paths = true
+no_external_dependencies = true

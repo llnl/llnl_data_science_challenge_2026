@@ -1,0 +1,7 @@
+{
+  "mode": "synthetic_validation",
+  "dataset_root": "data\\octet_truss_8x8x8",
+  "dataset_count": 0,
+  "records": [],
+  "memory_strategy": "NPY memory mapping, bounded strided sampling, compact masks"
+}

@@ -1,0 +1,102 @@
+{
+  "scan_access": "read-only tifffile memmap",
+  "whole_volume_downsample": 2,
+  "local_refinement_resolution": "1x source voxels",
+  "threshold": 40081.0,
+  "tube_radius_source_voxels": 6.0,
+  "empty_station_fraction": 0.05,
+  "fixed_expected_supported_cutoff": 0.04297328814864163,
+  "control_occupancy_cutoff": 0.3306232988834381,
+  "control_struts": 4441,
+  "training_control_struts": 3582,
+  "held_out_control_struts": 859,
+  "alignment_observations": 93,
+  "models": {
+    "baseline": {},
+    "global_translation": {
+      "shift": [
+        -0.6195195526414908,
+        -1.5554149440716494
+      ]
+    },
+    "affine": {
+      "x_coef": [
+        2.781653962686522,
+        -0.007159558956274563,
+        0.0015595219578350354,
+        -0.0030923745595113766
+      ],
+      "y_coef": [
+        1.6880142054967717,
+        -0.0017843541851853169,
+        -0.003999240659476699,
+        -0.0020651577631206758
+      ]
+    },
+    "piecewise_z": {
+      "split_z": 191.05235290527344,
+      "low_shift": [
+        0.44847497683794274,
+        -0.1728398707695408
+      ],
+      "high_shift": [
+        -0.9304242388437542,
+        -1.95789740765279
+      ],
+      "loss": 12106.169478825504
+    }
+  },
+  "held_out_scores": {
+    "baseline": 0.8850695288413566,
+    "global_translation": 0.8950990801980324,
+    "affine": 0.929895482864051,
+    "piecewise_z": 0.8991543962440354
+  },
+  "selected_model": "affine",
+  "selected_score_gain_over_baseline": 0.0448259540226944,
+  "classification_sensitivity": [
+    {
+      "model": "baseline",
+      "changed_vs_recomputed_baseline": 0,
+      "Nominal": 17746,
+      "Missing_Unintentional": 630,
+      "Missing_Intentional": 87,
+      "Expected_Missing_But_Material_Present": 5,
+      "expected_supported_cutoff": 0.04297328814864163,
+      "mean_occupancy": 0.26877591013908386
+    },
+    {
+      "model": "global_translation",
+      "changed_vs_recomputed_baseline": 225,
+      "Nominal": 17961,
+      "Missing_Unintentional": 415,
+      "Missing_Intentional": 89,
+      "Expected_Missing_But_Material_Present": 3,
+      "expected_supported_cutoff": 0.04297328814864163,
+      "mean_occupancy": 0.27839118242263794
+    },
+    {
+      "model": "affine",
+      "changed_vs_recomputed_baseline": 298,
+      "Nominal": 18039,
+      "Missing_Unintentional": 337,
+      "Missing_Intentional": 90,
+      "Expected_Missing_But_Material_Present": 2,
+      "expected_supported_cutoff": 0.04297328814864163,
+      "mean_occupancy": 0.30274713039398193
+    },
+    {
+      "model": "piecewise_z",
+      "changed_vs_recomputed_baseline": 224,
+      "Nominal": 17910,
+      "Missing_Unintentional": 466,
+      "Missing_Intentional": 87,
+      "Expected_Missing_But_Material_Present": 5,
+      "expected_supported_cutoff": 0.04297328814864163,
+      "mean_occupancy": 0.27899593114852905
+    }
+  ],
+  "selected_model_classification_changes": 298,
+  "candidate_registration": "candidate_affine_registered.json",
+  "recommendation": "Validate the affine model on manually reviewed struts before promoting the separate candidate JSON."
+}

@@ -1,0 +1,40 @@
+{
+  "downsample": 2,
+  "threshold": 40000.0,
+  "scan_shape_zyx_source": [
+    761,
+    815,
+    837
+  ],
+  "scan_shape_zyx_downsampled": [
+    381,
+    408,
+    419
+  ],
+  "slab_width_source_voxels": 16,
+  "search_range_source_voxels": [
+    -12,
+    12
+  ],
+  "best_shift_trend_x_source_voxels_per_z": -0.002936726287130305,
+  "best_shift_trend_y_source_voxels_per_z": -0.0025494744232452773,
+  "best_shift_trend_magnitude_source_voxels_per_z": 0.003888982015939902,
+  "trend_r2_x": 0.05183471729758804,
+  "trend_r2_y": 0.03914054136108791,
+  "core_trend_x_source_voxels_per_z": -0.0030082651324852107,
+  "core_trend_y_source_voxels_per_z": -0.003798314561218701,
+  "core_trend_r2_x": 0.5053885422575155,
+  "core_trend_r2_y": 0.6347316110259367,
+  "core_lower_z_median_shift_source_voxels": [
+    0.0,
+    0.0
+  ],
+  "core_upper_z_median_shift_source_voxels": [
+    -2.0,
+    -2.0
+  ],
+  "core_shift_change_magnitude_source_voxels": 2.8284271247461903,
+  "mean_overlap_gain_from_local_shift": 0.01924723907934348,
+  "max_overlap_gain_from_local_shift": 0.05612125573446075,
+  "interpretation_note": "A linear shift trend with Z is evidence of tilt/shear; piecewise jumps suggest layer shifts. Overlap gains can also reflect missing material and threshold effects."
+}

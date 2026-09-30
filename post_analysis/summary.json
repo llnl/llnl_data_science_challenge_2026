@@ -1,0 +1,25 @@
+{
+  "source_tiff": "part2/data/missing_struts/tif_stacks/210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.tif",
+  "shape_zyx": [761, 815, 837],
+  "dtype": ">u2",
+  "total_voxels": 519119955,
+  "intensity_min": 0,
+  "intensity_max": 65535,
+  "mean_intensity": 34296.14655017452,
+  "literal_nonzero": {
+    "comparison": "> 0",
+    "voxels": 519119954,
+    "percent": 99.9999998073663
+  },
+  "stage3_material": {
+    "comparison": ">= 40000",
+    "voxels": 58892807,
+    "percent": 11.344739579506244
+  },
+  "stage2_otsu_material": {
+    "comparison": ">= 40081",
+    "voxels": 58534972,
+    "percent": 11.275808497864428
+  },
+  "interpretation": "Literal nonzero occupancy is not a valid material fraction because background voxels have nonzero intensities. Use the thresholded value for CT-material occupancy."
+}

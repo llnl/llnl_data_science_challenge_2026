@@ -1,0 +1,5 @@
+model,changed_vs_recomputed_baseline,Nominal,Missing_Unintentional,Missing_Intentional,Expected_Missing_But_Material_Present,expected_supported_cutoff,mean_occupancy
+baseline,0,17746,630,87,5,0.04297328814864163,0.26877591013908386
+global_translation,225,17961,415,89,3,0.04297328814864163,0.27839118242263794
+affine,298,18039,337,90,2,0.04297328814864163,0.30274713039398193
+piecewise_z,224,17910,466,87,5,0.04297328814864163,0.27899593114852905

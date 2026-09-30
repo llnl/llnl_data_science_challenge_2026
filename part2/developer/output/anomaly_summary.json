@@ -1,0 +1,26 @@
+{
+  "input": "data\\missing_struts\\tif_stacks\\210127_Brian_Tran_strut_lattices_0point5dash1 1 Slices.tif",
+  "shape_zyx": [
+    761,
+    815,
+    837
+  ],
+  "dtype": "uint16",
+  "threshold": 40264.0,
+  "threshold_method": "Otsu on bounded page-wise strided sample",
+  "sample_values": 250000,
+  "downsample_factor": 4,
+  "downsampled_mask_shape_zyx": [
+    191,
+    204,
+    210
+  ],
+  "pooled_foreground_voxels": 926605,
+  "candidate_count": 572,
+  "candidate_output": "C:\\Users\\Enduser\\llnl_data_science_challenge_2026\\part2\\interagent_feedback\\anomaly_candidates.json",
+  "limitations": [
+    "Candidates are not confirmed defects; Stage 2b must visually validate them.",
+    "Downsampling and local max pooling favor recall and can create false gaps/bridges.",
+    "No CAD registration or machine learning is performed."
+  ]
+}
